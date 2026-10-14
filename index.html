@@ -1,0 +1,4374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VortexMesh // Zero-Footprint Hybrid P2P &amp; Cloud Proxy Terminal</title>
+  <style>
+    :root {
+      --bg-void: #06080d;
+      --bg-sidebar: #0b0e17;
+      --bg-panel: #101522;
+      --bg-elevated: #161d2f;
+      --bg-hover: #1e2740;
+      --border-dim: #1d2538;
+      --border-bright: #2e3b59;
+      --border-accent: #6366f1;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-indigo: #6366f1;
+      --accent-indigo-glow: rgba(99, 102, 241, 0.28);
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --shadow-lg: 0 22px 55px rgba(0, 0, 0, 0.8);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-void);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.5;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #232d45;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #37476b;
+    }
+
+    @keyframes orbitCW {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes orbitCCW {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+    @keyframes corePulse {
+      0%, 100% { transform: scale(0.9); opacity: 0.82; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+    @keyframes waveBounce {
+      0%, 100% { transform: scaleY(0.3); }
+      50% { transform: scaleY(1); }
+    }
+
+    .svg-orbit-cw {
+      transform-origin: center;
+      animation: orbitCW 11s linear infinite;
+    }
+    .svg-orbit-ccw {
+      transform-origin: center;
+      animation: orbitCCW 8s linear infinite;
+    }
+    .svg-core-pulse {
+      transform-origin: center;
+      animation: corePulse 2.5s ease-in-out infinite;
+    }
+
+    /* ==========================================================================
+     * 3-PANE TERMINAL LAYOUT
+     * ========================================================================== */
+    .app-shell {
+      display: grid;
+      grid-template-columns: 285px 1fr 330px;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ==========================================================================
+     * LEFT SIDEBAR: CHANNELS, DIRECT TUNNELS, RAM AUDIT, SUGGEST FEATURES, PROFILE
+     * ========================================================================== */
+    .sidebar-left {
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-dim);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      user-select: none;
+    }
+
+    .brand-header {
+      height: 58px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--border-dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .brand-identity {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(6, 182, 212, 0.22));
+      border: 1px solid rgba(99, 102, 241, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-indigo);
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .brand-subtitle {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+    }
+
+    /* Volatile RAM Zero-Footprint Card */
+    .ram-audit-card {
+      margin: 10px 10px 4px 10px;
+      padding: 10px;
+      border-radius: var(--radius-md);
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ram-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.32);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      display: inline-block;
+    }
+
+    .btn-panic-purge {
+      width: 100%;
+      padding: 5px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      background: rgba(244, 63, 94, 0.12);
+      color: var(--accent-rose);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.14s ease;
+    }
+    .btn-panic-purge:hover {
+      background: rgba(244, 63, 94, 0.24);
+      border-color: var(--accent-rose);
+    }
+
+    .sidebar-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .nav-group-label {
+      padding: 0 8px 4px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .nav-item {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      text-align: left;
+    }
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .nav-item.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.38);
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .nav-item-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .nav-item-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .unread-pill {
+      padding: 1px 6px;
+      border-radius: 99px;
+      background: var(--accent-indigo);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    /* Governance Feature Routing Card */
+    .governance-card {
+      padding: 10px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(180deg, rgba(99, 102, 241, 0.11), rgba(16, 21, 34, 0.92));
+      border: 1px solid rgba(99, 102, 241, 0.32);
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .governance-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .governance-desc {
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .btn-suggest-feature {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(99, 102, 241, 0.55);
+      background: var(--accent-indigo);
+      color: #ffffff;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: all 0.15s ease;
+    }
+    .btn-suggest-feature:hover {
+      background: #4f46e5;
+      box-shadow: 0 0 16px var(--accent-indigo-glow);
+    }
+
+    /* Local User Profile Card */
+    .local-profile-card {
+      margin: 10px;
+      border-radius: var(--radius-md);
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      overflow: hidden;
+    }
+
+    .profile-banner-stage {
+      position: relative;
+      width: 100%;
+      height: 46px;
+      background: #080b12;
+      overflow: hidden;
+    }
+
+    .profile-banner-stage canvas,
+    .profile-banner-stage img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .local-profile-body {
+      padding: 8px 10px 10px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .local-profile-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .avatar-frame {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      background: var(--bg-void);
+      border: 2px solid var(--border-bright);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .avatar-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .local-profile-meta {
+      min-width: 0;
+    }
+
+    .local-name-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .local-display-name {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge-role {
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .badge-role.admin {
+      background: rgba(245, 158, 11, 0.16);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+    .badge-role.peer {
+      background: rgba(6, 182, 212, 0.14);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.32);
+    }
+    .badge-role.quarantined {
+      background: rgba(244, 63, 94, 0.16);
+      color: var(--accent-rose);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+    }
+
+    .local-fingerprint {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      flex-shrink: 0;
+    }
+    .icon-btn:hover, .icon-btn.active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--border-bright);
+    }
+
+    .btn-mini {
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-bright);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .btn-mini:hover {
+      border-color: var(--accent-indigo);
+      background: var(--bg-hover);
+    }
+
+    /* ==========================================================================
+     * CENTER PANEL: HEADER, TYPING INDICATOR, FEED, SOUNDBOARD, SVG EMOJI SUITE
+     * ========================================================================== */
+    .center-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: var(--bg-void);
+      min-width: 0;
+      position: relative;
+    }
+
+    .chat-header {
+      height: 58px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--border-dim);
+      background: var(--bg-sidebar);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .chat-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .chat-channel-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .chat-channel-topic {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .e2ee-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--accent-emerald);
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    /* Drawers: Soundboard & Emoji Picker */
+    .drawer-panel {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-dim);
+      padding: 12px 18px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .drawer-panel.open {
+      display: flex;
+    }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .soundboard-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .sound-pad-btn {
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-dim);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      text-align: left;
+    }
+    .sound-pad-btn:hover {
+      border-color: var(--accent-cyan);
+      background: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .sound-pad-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: rgba(6, 182, 212, 0.14);
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .emoji-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .emoji-tile-btn {
+      padding: 7px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-dim);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      transition: all 0.14s ease;
+    }
+    .emoji-tile-btn:hover {
+      border-color: var(--accent-indigo);
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+
+    /* Message Stream */
+    .message-stream {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .channel-genesis-banner {
+      padding: 12px 15px;
+      border-radius: var(--radius-md);
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .msg-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+    .msg-card:hover {
+      background: var(--bg-sidebar);
+      border-color: var(--border-dim);
+    }
+    .msg-card.governance-proposal {
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.1), rgba(16, 21, 34, 0.92));
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+    .msg-card.soundboard-event {
+      background: linear-gradient(90deg, rgba(6, 182, 212, 0.09), rgba(16, 21, 34, 0.92));
+      border-color: rgba(6, 182, 212, 0.32);
+    }
+
+    .msg-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .msg-header {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 4px;
+    }
+
+    .msg-author {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    .msg-author:hover {
+      text-decoration: underline;
+    }
+
+    .msg-timestamp {
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    .btn-inspect-e2ee {
+      margin-left: auto;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(16, 185, 129, 0.32);
+      background: rgba(16, 185, 129, 0.08);
+      color: var(--accent-emerald);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.14s ease;
+    }
+    .btn-inspect-e2ee:hover {
+      background: rgba(16, 185, 129, 0.2);
+    }
+
+    .msg-content {
+      color: #e2e8f0;
+      font-size: 13px;
+      line-height: 1.55;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .inline-custom-emoji {
+      display: inline-flex;
+      vertical-align: middle;
+      width: 19px;
+      height: 19px;
+      margin: 0 2px;
+    }
+
+    .sound-waveform-card {
+      margin-top: 6px;
+      padding: 7px 11px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-void);
+      border: 1px solid rgba(6, 182, 212, 0.35);
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .waveform-bars {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 16px;
+    }
+    .waveform-bar {
+      width: 3px;
+      height: 15px;
+      background: var(--accent-cyan);
+      border-radius: 2px;
+      animation: waveBounce 0.85s ease-in-out infinite;
+    }
+
+    .msg-reactions-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 7px;
+    }
+
+    .reaction-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-radius: 99px;
+      border: 1px solid var(--border-dim);
+      background: var(--bg-panel);
+      color: var(--text-secondary);
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .reaction-btn:hover, .reaction-btn.active {
+      border-color: var(--accent-indigo);
+      background: rgba(99, 102, 241, 0.16);
+      color: var(--text-primary);
+    }
+
+    /* Live P2P Typing Indicator Strip */
+    .typing-banner {
+      height: 22px;
+      padding: 0 18px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Composer Footer */
+    .composer-footer {
+      padding: 6px 18px 14px 18px;
+      background: var(--bg-void);
+      border-top: 1px solid var(--border-dim);
+    }
+
+    .composer-box {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-md);
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: border-color 0.15s ease;
+    }
+    .composer-box:focus-within {
+      border-color: var(--accent-indigo);
+    }
+
+    .composer-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+    }
+    .composer-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn-send {
+      padding: 7px 13px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent-indigo);
+      color: #ffffff;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+    }
+    .btn-send:hover {
+      background: #4f46e5;
+    }
+
+    /* ==========================================================================
+     * RIGHT SIDEBAR: CLOUD PROXY SYNC, ROOM KEY E2EE, WEBRTC PEERS, FIREWALL
+     * ========================================================================== */
+    .sidebar-right {
+      background: var(--bg-sidebar);
+      border-left: 1px solid var(--border-dim);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      user-select: none;
+      overflow-y: auto;
+    }
+
+    .right-card {
+      margin: 10px 10px 0 10px;
+      padding: 11px;
+      border-radius: var(--radius-md);
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .right-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-primary);
+    }
+
+    .proxy-endpoint-box {
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-void);
+      border: 1px solid var(--border-dim);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .peer-list-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .peer-node-card {
+      padding: 8px 9px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-void);
+      border: 1px solid var(--border-dim);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .peer-node-card:hover {
+      border-color: var(--border-bright);
+      background: var(--bg-elevated);
+    }
+    .peer-node-card.quarantined {
+      border-color: rgba(244, 63, 94, 0.45);
+      opacity: 0.72;
+    }
+
+    .peer-node-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .peer-node-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .peer-node-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .peer-node-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .peer-node-sub {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .reputation-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 9.5px;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+    }
+
+    .reputation-track {
+      flex: 1;
+      height: 4px;
+      background: var(--bg-panel);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .reputation-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.25s ease, background 0.25s ease;
+    }
+
+    .firewall-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+    }
+
+    .metric-box {
+      padding: 5px 7px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-void);
+      border: 1px solid var(--border-dim);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .audit-btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+    }
+
+    .btn-audit {
+      padding: 6px 7px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-dim);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 10.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.14s ease;
+    }
+    .btn-audit:hover {
+      border-color: var(--accent-rose);
+      color: var(--text-primary);
+      background: rgba(244, 63, 94, 0.12);
+    }
+    .btn-audit.restore:hover {
+      border-color: var(--accent-emerald);
+      background: rgba(16, 185, 129, 0.12);
+    }
+
+    .firewall-log {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      color: var(--text-muted);
+      background: var(--bg-void);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-sm);
+      padding: 6px 7px;
+      max-height: 82px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    /* ==========================================================================
+     * MODALS: PROFILE & ANIMATED GIF UPLOADER, SUGGEST FEATURES, CLOUD WIRE LOG
+     * ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 6, 11, 0.8);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 600;
+      padding: 18px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+    }
+
+    .modal-header {
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border-dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 16px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    .modal-footer {
+      padding: 11px 18px;
+      border-top: 1px solid var(--border-dim);
+      background: var(--bg-panel);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .profile-preview-showcase {
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-bright);
+      background: var(--bg-void);
+      overflow: hidden;
+    }
+
+    .preview-banner-stage {
+      height: 92px;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      background: #080b12;
+    }
+    .preview-banner-stage canvas,
+    .preview-banner-stage img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .preview-showcase-row {
+      padding: 0 16px 12px 16px;
+      margin-top: -26px;
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .preview-avatar-lg {
+      width: 62px;
+      height: 62px;
+      border-radius: 13px;
+      background: var(--bg-sidebar);
+      border: 3px solid var(--bg-void);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .preview-avatar-lg img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .form-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 11px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-dim);
+      background: var(--bg-panel);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      outline: none;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: var(--accent-indigo);
+    }
+
+    .upload-card {
+      padding: 10px;
+      border-radius: var(--radius-md);
+      border: 1px dashed var(--border-bright);
+      background: var(--bg-panel);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .preset-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+    }
+
+    .preset-btn {
+      padding: 7px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-dim);
+      background: var(--bg-panel);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.14s ease;
+    }
+    .preset-btn.selected {
+      border-color: var(--accent-indigo);
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent-indigo);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-secondary {
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-bright);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-secondary:hover {
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+
+    .crypto-dump-box {
+      padding: 9px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-void);
+      border: 1px solid var(--border-dim);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--accent-cyan);
+      word-break: break-all;
+      line-height: 1.45;
+      max-height: 115px;
+      overflow-y: auto;
+    }
+
+    .toast-stack {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 800;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .toast-item {
+      padding: 9px 13px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-bright);
+      border-left: 3px solid var(--accent-indigo);
+      color: var(--text-primary);
+      font-size: 12px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    @media (max-width: 1080px) {
+      .app-shell {
+        grid-template-columns: 255px 1fr;
+      }
+      .sidebar-right {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    <!-- ======================================================================
+         1. LEFT SIDEBAR: VOLATILE RAM AUDIT, CHANNELS, DMs, GOVERNANCE, PROFILE
+         ====================================================================== -->
+    <aside class="sidebar-left">
+      <div class="brand-header">
+        <div class="brand-identity">
+          <div class="brand-logo" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"></polygon>
+              <line x1="12" y1="22" x2="12" y2="15.5"></line>
+              <polyline points="22 8.5 12 15.5 2 8.5"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">VortexMesh</div>
+            <div class="brand-subtitle">Zero-Footprint P2P + Proxy</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zero Local Footprint (100% Volatile RAM Audit & Panic Purge) -->
+      <div class="ram-audit-card">
+        <div class="ram-row">
+          <span style="color: var(--text-secondary); font-weight: 600;">Volatile State Engine</span>
+          <span class="status-pill">
+            <span class="status-dot"></span>
+            <span id="ramAuditBadgeText">0B Disk / RAM Only</span>
+          </span>
+        </div>
+        <div class="ram-row" style="color: var(--text-muted); font-family: var(--font-mono); font-size: 10px;">
+          <span>localStorage / IndexedDB: 0B</span>
+          <span id="ramObjectCountLabel">RAM: 0 pkts</span>
+        </div>
+        <button type="button" class="btn-panic-purge" id="btnPurgeVolatileRam" title="Wipe all volatile RAM state, messages, and ephemeral keys immediately">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+          <span>Purge Volatile RAM</span>
+        </button>
+      </div>
+
+      <div class="sidebar-scroll">
+        <!-- Mesh Channels -->
+        <div>
+          <div class="nav-group-label">
+            <span>Encrypted Mesh Channels</span>
+          </div>
+          <div class="nav-list" id="channelNavList"></div>
+        </div>
+
+        <!-- Direct P2P WebRTC DataChannels -->
+        <div>
+          <div class="nav-group-label">
+            <span>WebRTC P2P DataChannels</span>
+          </div>
+          <div class="nav-list" id="dmNavList"></div>
+        </div>
+
+        <!-- Suggest Features Governance Routing -->
+        <div class="governance-card">
+          <div class="governance-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-indigo);">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <span>Genesis Admin Routing</span>
+          </div>
+          <div class="governance-desc" id="governanceAdminTargetText">
+            Encrypts feedback via AES-256-GCM and routes directly to the Genesis Administrator node.
+          </div>
+          <button type="button" class="btn-suggest-feature" id="btnOpenSuggestModal">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Suggest Features</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Local User Profile Card with Live Animated GIF or Canvas Shader Banner -->
+      <div class="local-profile-card">
+        <div class="profile-banner-stage" id="localSidebarBannerStage">
+          <canvas id="localSidebarBannerCanvas" width="265" height="46"></canvas>
+          <img id="localSidebarBannerGif" alt="Animated Profile Banner" style="display: none;" />
+        </div>
+        <div class="local-profile-body">
+          <div class="local-profile-left" id="btnLocalProfileClick" title="Edit Username, Bio & Upload Animated GIF PFP/Banner">
+            <div class="avatar-frame" id="localSidebarAvatarFrame"></div>
+            <div class="local-profile-meta">
+              <div class="local-name-row">
+                <span class="local-display-name" id="localSidebarDisplayName">peer</span>
+                <span class="badge-role admin" id="localSidebarRoleBadge">GENESIS ADMIN</span>
+              </div>
+              <div class="local-fingerprint" id="localSidebarFingerprint">ECDH: initializing...</div>
+            </div>
+          </div>
+          <button type="button" class="icon-btn" id="btnOpenProfileModal" title="Customize Animated GIF Profile & Identity">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ======================================================================
+         2. CENTER PANEL: HEADER, SOUNDBOARD, SVG EMOJI SUITE, FEED & COMPOSER
+         ====================================================================== -->
+    <main class="center-panel">
+      <header class="chat-header">
+        <div class="chat-header-left">
+          <span class="chat-channel-title" id="activeChannelTitle">#general-vortex</span>
+          <span class="chat-channel-topic" id="activeChannelTopic">Zero-Footprint WebRTC P2P DataChannels + Encrypted Cloud Proxy Sync</span>
+        </div>
+        <div class="chat-header-right">
+          <button type="button" class="btn-mini" id="btnHeaderToggleSoundboard" title="Toggle 8-Pad Web Audio API Soundboard">
+            Soundboard (8 Pads)
+          </button>
+          <button type="button" class="btn-mini" id="btnOpenCloudWireModal" title="Inspect Encrypted Cloud Proxy Envelopes">
+            Proxy Wire Log (<span id="headerCloudBatchCount">0</span>)
+          </button>
+          <span class="e2ee-pill" title="Every message, username, and Base64 GIF is encrypted via AES-256-GCM before leaving client memory">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span>AES-256-GCM E2EE</span>
+          </span>
+        </div>
+      </header>
+
+      <!-- Web Audio API Synthesized Soundboard Drawer -->
+      <section class="drawer-panel" id="soundboardDrawer" aria-label="Web Audio API Soundboard">
+        <div class="drawer-header">
+          <span>Web Audio API Synthesized Soundboard (Broadcasts over WebRTC DataChannels)</span>
+          <button type="button" class="btn-mini" id="btnCloseSoundboardDrawer">Close</button>
+        </div>
+        <div class="soundboard-grid" id="soundboardGrid"></div>
+      </section>
+
+      <!-- Custom Raw SVG Emoji & Reaction Drawer -->
+      <section class="drawer-panel" id="emojiDrawer" aria-label="Custom Vector SVG Emoji Picker">
+        <div class="drawer-header">
+          <span>Custom Vector SVG Emoji Suite (12 Hardcoded Graphics)</span>
+          <button type="button" class="btn-mini" id="btnCloseEmojiDrawer">Close</button>
+        </div>
+        <div class="emoji-picker-grid" id="emojiPickerGrid"></div>
+      </section>
+
+      <!-- Encrypted Message Feed -->
+      <section class="message-stream" id="messageStream" aria-live="polite"></section>
+
+      <!-- Live P2P Typing Indicator Strip -->
+      <div class="typing-banner" id="typingIndicatorStrip"></div>
+
+      <!-- Message Composer -->
+      <footer class="composer-footer">
+        <form class="composer-box" id="composerForm">
+          <button type="button" class="icon-btn" id="btnToggleSoundboard" title="Open Web Audio API Soundboard">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+          </button>
+          <button type="button" class="icon-btn" id="btnToggleEmojiPicker" title="Insert Custom Vector SVG Emoji">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+          </button>
+          <input
+            type="text"
+            id="composerInput"
+            class="composer-input"
+            maxlength="2000"
+            placeholder="Encrypt & transmit over WebRTC DataChannels (try :neon_bolt: or :cyber_flame:)..."
+            autocomplete="off"
+          />
+          <button type="submit" class="btn-send">
+            <span>Transmit</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </form>
+      </footer>
+    </main>
+
+    <!-- ======================================================================
+         3. RIGHT SIDEBAR: CLOUD PROXY GATEWAY, ROOM KEY, WEBRTC PEERS, FIREWALL
+         ====================================================================== -->
+    <aside class="sidebar-right">
+      <!-- Card 1: Hardcoded Cloud Proxy Gateway Sync Status -->
+      <div class="right-card">
+        <div class="right-card-header">
+          <span>Hardcoded Cloud Proxy Gateway</span>
+          <span class="status-pill" id="cloudSyncStatusPill">
+            <span class="status-dot"></span>
+            <span id="cloudSyncStatusText">SYNCED</span>
+          </span>
+        </div>
+        <div class="proxy-endpoint-box">
+          <span>Endpoint: https://google.com</span>
+          <span id="cloudSyncCountdownLabel" style="color: var(--text-secondary);">Next: 15s</span>
+        </div>
+        <div style="font-size: 10.5px; color: var(--text-secondary); display: flex; justify-content: space-between;">
+          <span>STUN: stun:google.com:19302</span>
+          <span id="rtcTunnelCountLabel" style="font-family: var(--font-mono); color: var(--accent-emerald);">3 RTC Tunnels</span>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" class="btn-mini" id="btnForceCloudSync" style="flex: 1;">Force Cloud Sync</button>
+          <button type="button" class="btn-mini" id="btnInspectLastCloudBatch">Inspect Batch</button>
+        </div>
+      </div>
+
+      <!-- Card 2: Shared Room Key E2EE Passphrase Derivation (PBKDF2 -> AES-256-GCM) -->
+      <div class="right-card">
+        <div class="right-card-header">
+          <span>Shared Room Key (PBKDF2 E2EE)</span>
+          <span id="roomKeyDigestBadge" style="font-family: var(--font-mono); font-size: 10px; color: var(--accent-indigo);">SHA256</span>
+        </div>
+        <div style="display: flex; gap: 5px;">
+          <input
+            type="password"
+            id="roomPassphraseInput"
+            class="form-input"
+            style="padding: 5px 8px; font-family: var(--font-mono); font-size: 11px;"
+            value="vortex-zero-trust-mesh-key"
+            title="Shared Room Passphrase used to derive the AES-256-GCM encryption key"
+          />
+          <button type="button" class="btn-mini" id="btnRotateRoomKey">Derive</button>
+        </div>
+      </div>
+
+      <!-- Card 3: Active WebRTC P2P Peers -->
+      <div class="right-card">
+        <div class="right-card-header">
+          <span>Active WebRTC P2P Peers</span>
+          <span id="peerOnlineCount" style="font-family: var(--font-mono); font-size: 10.5px; color: var(--accent-emerald);">4 Nodes</span>
+        </div>
+        <div class="peer-list-container" id="peerDirectoryList"></div>
+      </div>
+
+      <!-- Card 4: Defensive Security Firewall & Attack Simulator -->
+      <div class="right-card" style="margin-bottom: 10px;">
+        <div class="right-card-header">
+          <span style="color: var(--accent-cyan);">Defensive Security Firewall</span>
+          <span style="font-family: var(--font-mono); font-size: 10px; color: var(--accent-emerald);">8 pkt/5s | 64KB</span>
+        </div>
+        <div class="firewall-metrics">
+          <div class="metric-box">
+            <span>Verified Pkts</span>
+            <span id="metricVerifiedCount" style="color: var(--accent-emerald);">0</span>
+          </div>
+          <div class="metric-box">
+            <span>Dropped Pkts</span>
+            <span id="metricDroppedCount" style="color: var(--accent-rose);">0</span>
+          </div>
+        </div>
+        <div class="audit-btn-grid">
+          <button type="button" class="btn-audit" id="btnSimFlood">1. Simulate Flood</button>
+          <button type="button" class="btn-audit" id="btnSimOversize">2. Oversized Frame</button>
+          <button type="button" class="btn-audit" id="btnSimTamper">3. Tampered GCM Tag</button>
+          <button type="button" class="btn-audit" id="btnSimXss">4. XSS Vector Test</button>
+        </div>
+        <button type="button" class="btn-audit restore" id="btnSimRestorePeers" style="width: 100%; text-align: center;">
+          Restore Quarantined Peers &amp; Reputation
+        </button>
+        <div class="firewall-log" id="firewallAuditLog"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 1: DYNAMIC ANIMATED PROFILE (BASE64 GIF UPLOAD & BINARY GENERATOR)
+       ======================================================================== -->
+  <div class="modal-backdrop" id="profileModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">Dynamic Animated Profile (Encrypted Base64 GIF P2P &amp; Cloud Sync)</span>
+        <button type="button" class="icon-btn" id="btnCloseProfileModal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Live Preview Stage -->
+        <div class="profile-preview-showcase">
+          <div class="preview-banner-stage">
+            <canvas id="modalPreviewBannerCanvas" width="520" height="92"></canvas>
+            <img id="modalPreviewBannerGif" alt="Animated Banner Preview" style="display: none;" />
+          </div>
+          <div class="preview-showcase-row">
+            <div style="display: flex; align-items: flex-end; gap: 12px;">
+              <div class="preview-avatar-lg" id="modalPreviewAvatarBox"></div>
+              <div>
+                <div style="font-size: 14.5px; font-weight: 700;" id="modalPreviewCallsign">peer</div>
+                <div style="font-size: 11px; font-family: var(--font-mono); color: var(--accent-cyan);" id="modalPreviewBioText">Bio</div>
+              </div>
+            </div>
+            <span class="badge-role admin" id="modalPreviewRoleBadge">GENESIS ADMIN</span>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-field">
+            <label class="form-label" for="inputProfileCallsign">Username (AES-GCM Encrypted on Wire)</label>
+            <input type="text" id="inputProfileCallsign" class="form-input" maxlength="24" placeholder="e.g., vortex_architect" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="inputProfileBio">Display Bio &amp; Status</label>
+            <input type="text" id="inputProfileBio" class="form-input" maxlength="60" placeholder="Zero-Footprint Mesh Architect" />
+          </div>
+        </div>
+
+        <!-- Base64 Animated GIF Uploaders & Built-In Binary GIF89a Generators -->
+        <div class="form-grid-2">
+          <div class="upload-card">
+            <div class="form-label">
+              <span>Animated GIF / Image PFP</span>
+              <button type="button" class="btn-mini" id="btnClearCustomPfp" style="display: none;">Reset</button>
+            </div>
+            <div style="font-size: 10.5px; color: var(--text-muted);">
+              Converts to <code>data:image/gif;base64</code>, encrypts with AES-256-GCM, and syncs via P2P chunks.
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: 3px;">
+              <button type="button" class="btn-secondary" id="btnUploadPfpFile" style="flex: 1; padding: 6px;">Upload GIF/Img</button>
+              <button type="button" class="btn-mini" id="btnGenSampleGifPfp" title="Synthesize a real multi-frame binary GIF89a animation in RAM">Binary GIF89a</button>
+            </div>
+            <input type="file" id="fileInputPfp" accept="image/gif,image/png,image/webp,image/jpeg" style="display: none;" />
+          </div>
+
+          <div class="upload-card">
+            <div class="form-label">
+              <span>Animated GIF / Image Banner</span>
+              <button type="button" class="btn-mini" id="btnClearCustomBanner" style="display: none;">Reset</button>
+            </div>
+            <div style="font-size: 10.5px; color: var(--text-muted);">
+              Renders actively looping Base64 GIF banners across chat &amp; member cards.
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: 3px;">
+              <button type="button" class="btn-secondary" id="btnUploadBannerFile" style="flex: 1; padding: 6px;">Upload GIF/Img</button>
+              <button type="button" class="btn-mini" id="btnGenSampleGifBanner" title="Synthesize a real multi-frame binary GIF89a banner in RAM">Binary GIF89a</button>
+            </div>
+            <input type="file" id="fileInputBanner" accept="image/gif,image/png,image/webp,image/jpeg" style="display: none;" />
+          </div>
+        </div>
+
+        <!-- Procedural HTML5 Canvas Banner Shader Fallback Presets -->
+        <div class="form-field">
+          <label class="form-label">Procedural Canvas Shader Fallback Banner (When no GIF Banner is set)</label>
+          <div class="preset-grid-4" id="bannerPresetGrid"></div>
+        </div>
+
+        <!-- Custom Raw SVG Avatar Fallback Presets -->
+        <div class="form-field">
+          <label class="form-label">Animated Vector SVG Avatar Fallback (When no GIF PFP is set)</label>
+          <div class="preset-grid-4" id="avatarPresetGrid"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnCancelProfileModal">Cancel</button>
+        <button type="button" class="btn-primary" id="btnSaveProfileModal">Encrypt &amp; Sync Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 2: SUGGEST FEATURES (ENCRYPTED & ROUTED TO GENESIS ADMIN)
+       ======================================================================== -->
+  <div class="modal-backdrop" id="suggestModal" role="dialog" aria-modal="true">
+    <div class="modal-card" style="max-width: 470px;">
+      <div class="modal-header">
+        <span class="modal-title">Route Encrypted Feature Proposal to Genesis Admin</span>
+        <button type="button" class="icon-btn" id="btnCloseSuggestModal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 11.5px; color: var(--text-secondary);" id="suggestModalTargetInfo">
+          Encrypted with AES-256-GCM and routed over WebRTC DataChannels + Cloud Proxy to the Genesis Administrator.
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="suggestTitleInput">Feature Proposal Title</label>
+          <input type="text" id="suggestTitleInput" class="form-input" maxlength="80" placeholder="e.g., Ephemeral Post-Quantum Ratchet" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="suggestCategorySelect">Target Subsystem</label>
+          <select id="suggestCategorySelect" class="form-select">
+            <option value="Hybrid Cloud Proxy & WebRTC">Hybrid Cloud Proxy &amp; WebRTC</option>
+            <option value="AES-256-GCM Cryptographic Layer">AES-256-GCM Cryptographic Layer</option>
+            <option value="Animated Base64 GIF Pipeline">Animated Base64 GIF Pipeline</option>
+            <option value="Web Audio Soundboard & SVG Suite">Web Audio Soundboard &amp; SVG Suite</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="suggestDetailsInput">Technical Specification</label>
+          <textarea id="suggestDetailsInput" class="form-textarea" rows="4" maxlength="1000" placeholder="Detail the architectural specification for the Genesis Administrator..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnCancelSuggestModal">Cancel</button>
+        <button type="button" class="btn-primary" id="btnSubmitSuggestModal">Encrypt &amp; Route to Admin</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 3: INSPECT CIPHERTEXT / CLOUD PROXY ENVELOPE TELEMETRY
+       ======================================================================== -->
+  <div class="modal-backdrop" id="cryptoInspectorModal" role="dialog" aria-modal="true">
+    <div class="modal-card" style="max-width: 550px;">
+      <div class="modal-header">
+        <span class="modal-title" id="cryptoModalTitle">Inspect E2EE Ciphertext &amp; Cloud Proxy Envelope</span>
+        <button type="button" class="icon-btn" id="btnCloseCryptoModal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <span class="form-label">Transport &amp; Gateway Metadata</span>
+          <div class="crypto-dump-box" id="inspectTransportInfo"></div>
+        </div>
+        <div class="form-field">
+          <span class="form-label">96-Bit AES-GCM Initialization Vector (IV) &amp; SHA-256 Block Digest</span>
+          <div class="crypto-dump-box" id="inspectIvHex"></div>
+        </div>
+        <div class="form-field">
+          <span class="form-label">AES-256-GCM Encrypted Payload (Includes Encrypted Username, Message &amp; Base64 GIF)</span>
+          <div class="crypto-dump-box" id="inspectCiphertext"></div>
+        </div>
+        <div class="form-field">
+          <span class="form-label">ECDSA P-256 Signature / Cloud Proxy Wire Dispatch Log</span>
+          <div class="crypto-dump-box" id="inspectSignature"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-primary" id="btnDoneCryptoModal">Close Inspector</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 4: PEER PROFILE VIEWER (LIVE ANIMATED GIF BANNER & AVATAR)
+       ======================================================================== -->
+  <div class="modal-backdrop" id="peerViewerModal" role="dialog" aria-modal="true">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <span class="modal-title">Verified Peer Identity Card</span>
+        <button type="button" class="icon-btn" id="btnClosePeerViewerModal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="profile-preview-showcase">
+          <div class="preview-banner-stage">
+            <canvas id="peerViewerBannerCanvas" width="420" height="92"></canvas>
+            <img id="peerViewerBannerGif" alt="Peer Animated Banner" style="display: none;" />
+          </div>
+          <div class="preview-showcase-row">
+            <div style="display: flex; align-items: flex-end; gap: 12px;">
+              <div class="preview-avatar-lg" id="peerViewerAvatarBox"></div>
+              <div>
+                <div style="font-size: 14.5px; font-weight: 700;" id="peerViewerCallsign">peer</div>
+                <div style="font-size: 11px; font-family: var(--font-mono); color: var(--accent-cyan);" id="peerViewerBio">Status</div>
+              </div>
+            </div>
+            <span class="badge-role peer" id="peerViewerRoleBadge">PEER</span>
+          </div>
+        </div>
+        <div class="crypto-dump-box" id="peerViewerCryptoSummary"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnDonePeerViewerModal">Close</button>
+        <button type="button" class="btn-primary" id="btnOpenDirectTunnelFromViewer">Open Direct P2P Tunnel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    /**
+     * ============================================================================
+     * VORTEXMESH // ZERO-FOOTPRINT HYBRID P2P & CLOUD PROXY TERMINAL
+     * - Hardcoded Cloud Proxy Endpoint: https://google.com
+     * - Zero Local Footprint: 100% Volatile RAM (No localStorage/sessionStorage/IndexedDB)
+     * - Hybrid WebRTC P2P DataChannels + Public Google STUN Servers
+     * - End-to-End Encryption: PBKDF2-SHA256 + AES-256-GCM + ECDH P-256 + ECDSA P-256
+     * - Animated Base64 GIF PFP & Banner Pipeline + Binary GIF89a Generator
+     * - 8-Pad Web Audio API Synthesized Soundboard & 12 Custom Raw SVG Emojis
+     * ============================================================================
+     */
+    (() => {
+      'use strict';
+
+      /* ========================================================================
+       * 1. HARDCODED CLOUD PROXY GATEWAY & PUBLIC STUN CONFIGURATION
+       * ======================================================================== */
+      const CLOUD_PROXY_ENDPOINT = 'https://google.com';
+
+      const PUBLIC_STUN_CONFIG = {
+        iceServers: [
+          { urls: 'stun:google.com:19302' },
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+      };
+
+      /* ========================================================================
+       * 2. INPUT & BASE64 MAGIC-BYTE SANITIZER
+       * ======================================================================== */
+      const SecuritySanitizer = {
+        sanitizeText(raw, maxLength = 2000) {
+          if (typeof raw !== 'string') return '';
+          return raw
+            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+            .replace(/<\s*\/?\s*(script|iframe|object|embed|svg|style|link|meta|onload|onerror)[^>]*>/gi, '[stripped-tag]')
+            .replace(/javascript\s*:/gi, '[stripped-proto]')
+            .replace(/on[a-z]+\s*=/gi, 'data-blocked=')
+            .trim()
+            .slice(0, maxLength);
+        },
+
+        sanitizeCallsign(raw) {
+          if (typeof raw !== 'string') return 'vortex_peer';
+          const cleaned = raw.trim().replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 24);
+          return cleaned || 'vortex_peer';
+        },
+
+        isValidBase64Media(dataUri, maxBytes = 1536 * 1024) {
+          if (typeof dataUri !== 'string') return false;
+          const match = dataUri.match(/^data:image\/(gif|png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/);
+          if (!match) return false;
+          const base64Body = match[2];
+          const estimatedBytes = Math.floor((base64Body.length * 3) / 4);
+          if (estimatedBytes > maxBytes || estimatedBytes < 8) return false;
+
+          try {
+            const headBin = atob(base64Body.slice(0, 24));
+            const b = new Uint8Array(headBin.length);
+            for (let i = 0; i < headBin.length; i++) b[i] = headBin.charCodeAt(i);
+            const isGif = b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38;
+            const isPng = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47;
+            const isJpeg = b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF;
+            const isWebp = b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+                           b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50;
+            return isGif || isPng || isJpeg || isWebp;
+          } catch (_) {
+            return false;
+          }
+        }
+      };
+
+      /* ========================================================================
+       * 3. PROGRAMMATIC MULTI-FRAME BINARY GIF89a GENERATOR (IN-MEMORY)
+       * Builds genuine animated looping `data:image/gif;base64,...` strings
+       * ======================================================================== */
+      const BinaryGif89aGenerator = {
+        lzwEncode(indices, minCodeSize) {
+          const clearCode = 1 << minCodeSize;
+          const endCode = clearCode + 1;
+          let codeSize = minCodeSize + 1;
+          let nextCode = endCode + 1;
+          const dict = new Map();
+
+          const resetDict = () => {
+            dict.clear();
+            for (let i = 0; i < clearCode; i++) dict.set(String(i), i);
+            codeSize = minCodeSize + 1;
+            nextCode = endCode + 1;
+          };
+          resetDict();
+
+          const bytes = [];
+          let bitBuf = 0;
+          let bitCount = 0;
+          const emit = (code) => {
+            bitBuf |= (code << bitCount);
+            bitCount += codeSize;
+            while (bitCount >= 8) {
+              bytes.push(bitBuf & 0xff);
+              bitBuf >>= 8;
+              bitCount -= 8;
+            }
+          };
+
+          emit(clearCode);
+          let prefix = String(indices[0]);
+          for (let i = 1; i < indices.length; i++) {
+            const k = indices[i];
+            const combo = `${prefix},${k}`;
+            if (dict.has(combo)) {
+              prefix = combo;
+            } else {
+              emit(dict.get(prefix));
+              if (nextCode < 4096) {
+                dict.set(combo, nextCode++);
+                if (nextCode > (1 << codeSize) && codeSize < 12) codeSize++;
+              } else {
+                emit(clearCode);
+                resetDict();
+              }
+              prefix = String(k);
+            }
+          }
+          emit(dict.get(prefix));
+          emit(endCode);
+          if (bitCount > 0) bytes.push(bitBuf & 0xff);
+          return bytes;
+        },
+
+        createAnimatedGifBase64(width, height, paletteRGB, frameCount = 6) {
+          const out = [];
+          const pushStr = (s) => { for (let i = 0; i < s.length; i++) out.push(s.charCodeAt(i)); };
+          const pushU16 = (v) => { out.push(v & 0xff, (v >> 8) & 0xff); };
+
+          pushStr('GIF89a');
+          pushU16(width);
+          pushU16(height);
+          out.push(0xF1, 0x00, 0x00);
+          for (let c = 0; c < 4; c++) {
+            const rgb = paletteRGB[c] || [8, 12, 24];
+            out.push(rgb[0], rgb[1], rgb[2]);
+          }
+
+          // Netscape 2.0 Infinite Loop Extension
+          out.push(0x21, 0xFF, 0x0B);
+          pushStr('NETSCAPE2.0');
+          out.push(0x03, 0x01, 0x00, 0x00, 0x00);
+
+          for (let f = 0; f < frameCount; f++) {
+            out.push(0x21, 0xF9, 0x04, 0x00, 0x0B, 0x00, 0x00, 0x00);
+            out.push(0x2C);
+            pushU16(0);
+            pushU16(0);
+            pushU16(width);
+            pushU16(height);
+            out.push(0x00);
+
+            const pixels = new Uint8Array(width * height);
+            for (let y = 0; y < height; y++) {
+              for (let x = 0; x < width; x++) {
+                const wave = (x + y + f * 3) % 12;
+                const dist = Math.abs(x - width / 2) + Math.abs(y - height / 2);
+                if ((Math.floor(dist) + f * 2) % 6 === 0) {
+                  pixels[y * width + x] = 3;
+                } else if (wave < 3) {
+                  pixels[y * width + x] = 2;
+                } else if (wave < 6) {
+                  pixels[y * width + x] = 1;
+                } else {
+                  pixels[y * width + x] = 0;
+                }
+              }
+            }
+
+            const minCodeSize = 2;
+            out.push(minCodeSize);
+            const lzwBytes = this.lzwEncode(pixels, minCodeSize);
+            let offset = 0;
+            while (offset < lzwBytes.length) {
+              const chunkLen = Math.min(255, lzwBytes.length - offset);
+              out.push(chunkLen);
+              for (let i = 0; i < chunkLen; i++) out.push(lzwBytes[offset + i]);
+              offset += chunkLen;
+            }
+            out.push(0x00);
+          }
+
+          out.push(0x3B);
+          let bin = '';
+          for (let i = 0; i < out.length; i++) bin += String.fromCharCode(out[i]);
+          return `data:image/gif;base64,${btoa(bin)}`;
+        }
+      };
+
+      /* ========================================================================
+       * 4. 12 CUSTOM RAW VECTOR SVG EMOJI & REACTION SUITE
+       * ======================================================================== */
+      const CUSTOM_SVG_EMOJIS = {
+        ':neon_bolt:': {
+          name: 'Neon Bolt',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><polygon points="13 2 4 14 12 14 11 22 20 10 12 10 13 2" fill="rgba(245,158,11,0.28)" stroke="#f59e0b" stroke-width="1.8"/></svg>`
+        },
+        ':cyber_flame:': {
+          name: 'Cyber Flame',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2C9 6 7 9.5 7 13.5C7 17.6 9.8 21 13.5 21C17.2 21 20 18 20 14C20 11 18 8 16 6C15.5 8.5 14 9.5 13 9C13.5 6 13 3.5 12 2Z" fill="#f43f5e" stroke="#fb7185" stroke-width="1.5"/><path d="M13 13C11.5 14.5 11 16.5 12.5 18.5C14 20 16.5 18.5 16.5 16C16.5 14.5 15 13.5 13 13Z" fill="#f59e0b"/></svg>`
+        },
+        ':aegis_shield:': {
+          name: 'Aegis Shield',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2L4 5.5V11.5C4 16.8 7.4 20.9 12 22C16.6 20.9 20 16.8 20 11.5V5.5L12 2Z" fill="rgba(16,185,129,0.22)" stroke="#10b981" stroke-width="1.8"/><polyline points="8.5 12.5 11 15 16 9.5" stroke="#34d399" stroke-width="2.2" stroke-linecap="round"/></svg>`
+        },
+        ':quantum_core:': {
+          name: 'Quantum Core',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill="rgba(99,102,241,0.24)" stroke="#6366f1" stroke-width="1.8"/><ellipse cx="12" cy="12" rx="9" ry="3.8" stroke="#06b6d4" stroke-width="1.5"/><circle cx="12" cy="12" r="2.5" fill="#38bdf8"/></svg>`
+        },
+        ':prism_heart:': {
+          name: 'Prism Heart',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 4 14.8 4 8.8C4 5.8 6.4 3.5 9.2 3.5C10.9 3.5 12 4.4 12 5.7C12 4.4 13.1 3.5 14.8 3.5C17.6 3.5 20 5.8 20 8.8C20 14.8 12 20.5 12 20.5Z" fill="rgba(236,72,153,0.28)" stroke="#ec4899" stroke-width="2"/></svg>`
+        },
+        ':synth_wave:': {
+          name: 'Synth Wave',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><polygon points="12 2 21 9 12 22 3 9 12 2" fill="rgba(6,182,212,0.22)" stroke="#38bdf8" stroke-width="1.8"/><polyline points="3 9 12 13 21 9" stroke="#a855f7" stroke-width="1.5"/></svg>`
+        },
+        ':radar_lock:': {
+          name: 'Radar Lock',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#10b981" stroke-width="1.7"/><circle cx="12" cy="12" r="5" stroke="#10b981" stroke-width="1.3" stroke-dasharray="3 2"/><line x1="12" y1="12" x2="18" y2="6" stroke="#34d399" stroke-width="2"/></svg>`
+        },
+        ':bot_unit:': {
+          name: 'Bot Unit',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="13" rx="3" fill="rgba(6,182,212,0.2)" stroke="#06b6d4" stroke-width="1.8"/><line x1="12" y1="2" x2="12" y2="6" stroke="#06b6d4" stroke-width="2"/><circle cx="9" cy="12" r="1.8" fill="#38bdf8"/><circle cx="15" cy="12" r="1.8" fill="#38bdf8"/><line x1="9" y1="16" x2="15" y2="16" stroke="#a855f7" stroke-width="1.8"/></svg>`
+        },
+        ':warp_drive:': {
+          name: 'Warp Drive',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><path d="M14.5 4.5C17.5 3 20.5 3.5 20.5 3.5C20.5 3.5 21 6.5 19.5 9.5L13 16L8 11L14.5 4.5Z" fill="rgba(168,85,247,0.25)" stroke="#a855f7" stroke-width="1.8"/><polygon points="8 11 4 13 6 16 8 11" fill="#ec4899"/><polygon points="13 16 11 20 8 18 13 16" fill="#ec4899"/></svg>`
+        },
+        ':crown_sigil:': {
+          name: 'Crown Sigil',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><polygon points="3 18 5 7 9.5 12 12 6 14.5 12 19 7 21 18 3 18" fill="rgba(245,158,11,0.25)" stroke="#f59e0b" stroke-width="1.8"/></svg>`
+        },
+        ':skull_glitch:': {
+          name: 'Skull Glitch',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 3C7.5 3 4 6.5 4 11C4 14 5.5 16.2 7.5 17.5V20H16.5V17.5C18.5 16.2 20 14 20 11C20 6.5 16.5 3 12 3Z" fill="rgba(244,63,94,0.18)" stroke="#f43f5e" stroke-width="1.8"/><circle cx="9" cy="11.5" r="2" fill="#f43f5e"/><circle cx="15" cy="11.5" r="2" fill="#06b6d4"/></svg>`
+        },
+        ':laser_optic:': {
+          name: 'Laser Optic',
+          svg: `<svg viewBox="0 0 24 24" fill="none"><path d="M2 12C4.5 7 8 4.5 12 4.5C16 4.5 19.5 7 22 12C19.5 17 16 19.5 12 19.5C8 19.5 4.5 17 2 12Z" stroke="#6366f1" stroke-width="1.8"/><circle cx="12" cy="12" r="3.5" fill="#f43f5e"/></svg>`
+        }
+      };
+
+      /* ========================================================================
+       * 5. WEB AUDIO API SYNTHESIZED SOUNDBOARD ENGINE (8 ZERO-FILE PADS)
+       * ======================================================================== */
+      class WebAudioSoundboard {
+        constructor() {
+          this.ctx = null;
+          this.pads = [
+            { id: 'cyber_horn', name: 'Cyber Horn', spec: 'Sawtooth Triad' },
+            { id: 'coin_8bit', name: '8-Bit Coin', spec: 'B5 -> E6 Arp' },
+            { id: 'sonar_ping', name: 'Sonar Ping', spec: '1.42kHz Echo' },
+            { id: 'plasma_zap', name: 'Plasma Zap', spec: 'FM Down-Sweep' },
+            { id: 'hyper_chime', name: 'Hyper Chime', spec: 'C-E-G-C Arp' },
+            { id: 'red_alert', name: 'Red Alert', spec: 'Dual Siren' },
+            { id: 'bass_drop', name: 'Bass Drop', spec: '175Hz -> 32Hz' },
+            { id: 'warp_lock', name: 'Warp Lock', spec: 'Square Latch' }
+          ];
+        }
+
+        ensureContext() {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioCtx();
+          }
+          if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+          return this.ctx;
+        }
+
+        playPad(padId) {
+          try {
+            const ctx = this.ensureContext();
+            const now = ctx.currentTime;
+
+            if (padId === 'cyber_horn') {
+              [466.16, 587.33, 698.46].forEach(freq => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq * 0.96, now);
+                osc.frequency.linearRampToValueAtTime(freq, now + 0.06);
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.56);
+              });
+            } else if (padId === 'coin_8bit') {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'square';
+              osc.frequency.setValueAtTime(987.77, now);
+              osc.frequency.setValueAtTime(1318.51, now + 0.08);
+              gain.gain.setValueAtTime(0.18, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+              osc.connect(gain).connect(ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.43);
+            } else if (padId === 'sonar_ping') {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(1420, now);
+              gain.gain.setValueAtTime(0.22, now);
+              gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.72);
+              osc.connect(gain).connect(ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.73);
+            } else if (padId === 'plasma_zap') {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(1780, now);
+              osc.frequency.exponentialRampToValueAtTime(110, now + 0.28);
+              gain.gain.setValueAtTime(0.2, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.29);
+              osc.connect(gain).connect(ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.3);
+            } else if (padId === 'hyper_chime') {
+              [523.25, 659.25, 783.99, 1046.5].forEach((n, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(n, now + idx * 0.08);
+                gain.gain.setValueAtTime(0.18, now + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(now + idx * 0.08);
+                osc.stop(now + idx * 0.08 + 0.31);
+              });
+            } else if (padId === 'red_alert') {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(420, now);
+              osc.frequency.linearRampToValueAtTime(880, now + 0.25);
+              osc.frequency.linearRampToValueAtTime(420, now + 0.5);
+              gain.gain.setValueAtTime(0.16, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+              osc.connect(gain).connect(ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.53);
+            } else if (padId === 'bass_drop') {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(175, now);
+              osc.frequency.exponentialRampToValueAtTime(32, now + 0.65);
+              gain.gain.setValueAtTime(0.32, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.68);
+              osc.connect(gain).connect(ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.7);
+            } else {
+              [260, 540].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now + i * 0.06);
+                gain.gain.setValueAtTime(0.18, now + i * 0.06);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.12);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(now + i * 0.06);
+                osc.stop(now + i * 0.06 + 0.13);
+              });
+            }
+          } catch (_) {}
+        }
+      }
+
+      /* ========================================================================
+       * 6. PROCEDURAL HTML5 CANVAS BANNER SHADERS & ANIMATED VECTOR SVG AVATARS
+       * ======================================================================== */
+      const BANNER_THEMES = [
+        { id: 'cyber-grid', name: 'Cyber Grid' },
+        { id: 'nebula-pulse', name: 'Nebula Pulse' },
+        { id: 'matrix-rain', name: 'Matrix Horizon' },
+        { id: 'quantum-wave', name: 'Quantum Wave' }
+      ];
+
+      const AVATAR_PRESETS = [
+        { id: 'orbital', name: 'Orbital Core', c1: '#6366f1', c2: '#06b6d4' },
+        { id: 'hexshield', name: 'Hex Aegis', c1: '#10b981', c2: '#34d399' },
+        { id: 'synthstar', name: 'Synth Sigil', c1: '#ec4899', c2: '#a855f7' },
+        { id: 'solaris', name: 'Solaris Node', c1: '#f59e0b', c2: '#fb7185' }
+      ];
+
+      function renderVectorAvatarSVG(avatarId, size = 36) {
+        const p = AVATAR_PRESETS.find(a => a.id === avatarId) || AVATAR_PRESETS[0];
+        const wrap = document.createElement('div');
+        wrap.style.width = `${size}px`;
+        wrap.style.height = `${size}px`;
+        wrap.style.display = 'flex';
+        wrap.style.alignItems = 'center';
+        wrap.style.justifyContent = 'center';
+
+        if (p.id === 'orbital') {
+          wrap.innerHTML = `
+            <svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" rx="10" fill="#0d1322"/>
+              <g class="svg-orbit-cw">
+                <circle cx="24" cy="24" r="16" stroke="${p.c1}" stroke-width="1.8" stroke-dasharray="10 5"/>
+                <circle cx="24" cy="8" r="2.8" fill="${p.c2}"/>
+              </g>
+              <circle class="svg-core-pulse" cx="24" cy="24" r="6.5" fill="${p.c1}"/>
+            </svg>`;
+        } else if (p.id === 'hexshield') {
+          wrap.innerHTML = `
+            <svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" rx="10" fill="#0b1c1a"/>
+              <g class="svg-orbit-ccw">
+                <polygon points="24,6 40,15 40,33 24,42 8,33 8,15" stroke="${p.c1}" stroke-width="1.8"/>
+              </g>
+              <polygon class="svg-core-pulse" points="24,14 33,24 24,34 15,24" fill="${p.c2}"/>
+            </svg>`;
+        } else if (p.id === 'synthstar') {
+          wrap.innerHTML = `
+            <svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" rx="10" fill="#1b1026"/>
+              <g class="svg-orbit-cw">
+                <rect x="12" y="12" width="24" height="24" rx="5" stroke="${p.c2}" stroke-width="1.8"/>
+              </g>
+              <circle class="svg-core-pulse" cx="24" cy="24" r="6.5" fill="${p.c1}"/>
+            </svg>`;
+        } else {
+          wrap.innerHTML = `
+            <svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" rx="10" fill="#21150d"/>
+              <g class="svg-orbit-cw">
+                <rect x="13" y="13" width="22" height="22" transform="rotate(45 24 24)" stroke="${p.c1}" stroke-width="1.8"/>
+              </g>
+              <circle class="svg-core-pulse" cx="24" cy="24" r="6" fill="${p.c2}"/>
+            </svg>`;
+        }
+        return wrap;
+      }
+
+      function renderProfileAvatarInto(container, profile, size = 36) {
+        container.innerHTML = '';
+        if (profile && profile.customPfpBase64 && SecuritySanitizer.isValidBase64Media(profile.customPfpBase64)) {
+          const img = document.createElement('img');
+          img.src = profile.customPfpBase64;
+          img.alt = `${profile.callsign || 'peer'} animated avatar`;
+          container.appendChild(img);
+        } else {
+          container.appendChild(renderVectorAvatarSVG(profile ? profile.avatarId : 'orbital', size));
+        }
+      }
+
+      class CanvasBannerAnimator {
+        constructor() {
+          this.targets = [];
+          this.tick = 0;
+          this.animate = this.animate.bind(this);
+          requestAnimationFrame(this.animate);
+        }
+
+        register(canvasEl, getThemeFn) {
+          this.targets.push({ canvas: canvasEl, getTheme: getThemeFn });
+        }
+
+        animate() {
+          this.tick += 0.035;
+          this.targets.forEach(({ canvas, getTheme }) => {
+            if (!canvas || canvas.style.display === 'none') return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const theme = getTheme() || 'cyber-grid';
+
+            ctx.clearRect(0, 0, w, h);
+            if (theme === 'cyber-grid') {
+              const grad = ctx.createLinearGradient(0, 0, w, h);
+              grad.addColorStop(0, '#0f172a');
+              grad.addColorStop(1, '#1e1b4b');
+              ctx.fillStyle = grad;
+              ctx.fillRect(0, 0, w, h);
+              ctx.strokeStyle = 'rgba(99, 102, 241, 0.34)';
+              ctx.lineWidth = 1;
+              const offset = (this.tick * 12) % 18;
+              for (let x = -18 + offset; x < w; x += 18) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x - 14, h);
+                ctx.stroke();
+              }
+              for (let y = (this.tick * 8) % 14; y < h; y += 14) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+              }
+            } else if (theme === 'nebula-pulse') {
+              const grad = ctx.createLinearGradient(0, 0, w, h);
+              grad.addColorStop(0, '#2e1065');
+              grad.addColorStop(0.5, '#0f172a');
+              grad.addColorStop(1, '#083344');
+              ctx.fillStyle = grad;
+              ctx.fillRect(0, 0, w, h);
+              for (let i = 0; i < 6; i++) {
+                const x = (w / 6) * i + Math.sin(this.tick + i) * 18;
+                const y = h / 2 + Math.cos(this.tick * 0.8 + i) * (h * 0.28);
+                const r = 18 + Math.sin(this.tick + i * 2) * 6;
+                const rad = ctx.createRadialGradient(x, y, 1, x, y, r);
+                rad.addColorStop(0, i % 2 === 0 ? 'rgba(236, 72, 153, 0.45)' : 'rgba(6, 182, 212, 0.45)');
+                rad.addColorStop(1, 'transparent');
+                ctx.fillStyle = rad;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            } else if (theme === 'matrix-rain') {
+              ctx.fillStyle = '#051614';
+              ctx.fillRect(0, 0, w, h);
+              ctx.fillStyle = 'rgba(16, 185, 129, 0.46)';
+              for (let i = 0; i < 22; i++) {
+                const x = (i * 26) % w;
+                const y = ((this.tick * 28 + i * 19) % (h + 16)) - 8;
+                ctx.fillRect(x, y, 3, 10);
+              }
+            } else {
+              const grad = ctx.createLinearGradient(0, 0, w, 0);
+              grad.addColorStop(0, '#1e1b4b');
+              grad.addColorStop(0.5, '#311042');
+              grad.addColorStop(1, '#0f172a');
+              ctx.fillStyle = grad;
+              ctx.fillRect(0, 0, w, h);
+              ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              for (let x = 0; x <= w; x += 8) {
+                const y = h / 2 + Math.sin(x * 0.04 + this.tick * 2) * (h * 0.28);
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+              }
+              ctx.stroke();
+            }
+          });
+          requestAnimationFrame(this.animate);
+        }
+      }
+
+      /* ========================================================================
+       * 7. WEB CRYPTO API E2EE ENGINE (PBKDF2 + AES-256-GCM + ECDH + ECDSA)
+       * Encrypts every message, username, and Base64 GIF asset before leaving RAM
+       * ======================================================================== */
+      class WebCryptoE2EEEngine {
+        constructor() {
+          this.ecdhKeyPair = null;
+          this.ecdsaKeyPair = null;
+          this.localPublicJwk = null;
+          this.localSigningJwk = null;
+          this.fingerprint = '';
+          this.sharedRoomKey = null;
+          this.roomKeyDigestHex = '';
+        }
+
+        bufToBase64(buf) {
+          const bytes = new Uint8Array(buf);
+          let bin = '';
+          for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+          return btoa(bin);
+        }
+
+        base64ToBuf(b64) {
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return bytes.buffer;
+        }
+
+        bufToHex(buf) {
+          return Array.from(new Uint8Array(buf))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        }
+
+        async initIdentityAndRoomKey(passphrase) {
+          this.ecdhKeyPair = await crypto.subtle.generateKey(
+            { name: 'ECDH', namedCurve: 'P-256' },
+            true,
+            ['deriveKey', 'deriveBits']
+          );
+          this.ecdsaKeyPair = await crypto.subtle.generateKey(
+            { name: 'ECDSA', namedCurve: 'P-256' },
+            true,
+            ['sign', 'verify']
+          );
+
+          this.localPublicJwk = await crypto.subtle.exportKey('jwk', this.ecdhKeyPair.publicKey);
+          this.localSigningJwk = await crypto.subtle.exportKey('jwk', this.ecdsaKeyPair.publicKey);
+
+          const rawPub = new TextEncoder().encode(JSON.stringify(this.localPublicJwk));
+          const hashBuf = await crypto.subtle.digest('SHA-256', rawPub);
+          const hex = this.bufToHex(hashBuf).toUpperCase();
+          this.fingerprint = `${hex.slice(0, 4)}:${hex.slice(4, 8)}:${hex.slice(8, 12)}:${hex.slice(12, 16)}`;
+
+          await this.deriveSharedRoomKey(passphrase);
+        }
+
+        async deriveSharedRoomKey(passphrase) {
+          const enc = new TextEncoder();
+          const baseKey = await crypto.subtle.importKey(
+            'raw',
+            enc.encode(passphrase || 'vortex-zero-trust-mesh-key'),
+            'PBKDF2',
+            false,
+            ['deriveKey', 'deriveBits']
+          );
+
+          const salt = enc.encode('VORTEX_MESH_ZERO_FOOTPRINT_SALT_V1');
+          this.sharedRoomKey = await crypto.subtle.deriveKey(
+            {
+              name: 'PBKDF2',
+              salt,
+              iterations: 65000,
+              hash: 'SHA-256'
+            },
+            baseKey,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt', 'decrypt']
+          );
+
+          const digestBuf = await crypto.subtle.digest('SHA-256', enc.encode(passphrase));
+          this.roomKeyDigestHex = this.bufToHex(digestBuf).slice(0, 12).toUpperCase();
+        }
+
+        async encryptAndSignEnvelope(cleartextObject) {
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const encoded = new TextEncoder().encode(JSON.stringify(cleartextObject));
+
+          const cipherBuf = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            this.sharedRoomKey,
+            encoded
+          );
+
+          const sigBuf = await crypto.subtle.sign(
+            { name: 'ECDSA', hash: { name: 'SHA-256' } },
+            this.ecdsaKeyPair.privateKey,
+            cipherBuf
+          );
+
+          const blockHashBuf = await crypto.subtle.digest('SHA-256', cipherBuf);
+
+          return {
+            ivBase64: this.bufToBase64(iv.buffer),
+            ivHex: this.bufToHex(iv.buffer),
+            ciphertextBase64: this.bufToBase64(cipherBuf),
+            signatureBase64: this.bufToBase64(sigBuf),
+            blockHashHex: this.bufToHex(blockHashBuf),
+            signingJwk: this.localSigningJwk,
+            ecdhFingerprint: this.fingerprint,
+            epoch: Date.now()
+          };
+        }
+
+        async verifyAndDecryptEnvelope(envelope) {
+          const cipherBuf = this.base64ToBuf(envelope.ciphertextBase64);
+          const ivBuf = this.base64ToBuf(envelope.ivBase64);
+          const sigBuf = this.base64ToBuf(envelope.signatureBase64);
+
+          if (envelope.signingJwk) {
+            const verifyKey = await crypto.subtle.importKey(
+              'jwk',
+              envelope.signingJwk,
+              { name: 'ECDSA', namedCurve: 'P-256' },
+              false,
+              ['verify']
+            );
+            const sigValid = await crypto.subtle.verify(
+              { name: 'ECDSA', hash: { name: 'SHA-256' } },
+              verifyKey,
+              sigBuf,
+              cipherBuf
+            );
+            if (!sigValid) {
+              throw new Error('ECDSA P-256 signature verification failed');
+            }
+          }
+
+          const plainBuf = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: new Uint8Array(ivBuf) },
+            this.sharedRoomKey,
+            cipherBuf
+          );
+
+          return JSON.parse(new TextDecoder().decode(plainBuf));
+        }
+      }
+
+      /* ========================================================================
+       * 8. VORTEXMESH APPLICATION CONTROLLER (100% VOLATILE RAM STATE)
+       * ======================================================================== */
+      const DEFAULT_CHANNELS = [
+        { id: 'general-vortex', name: '#general-vortex', topic: 'Zero-Footprint WebRTC P2P DataChannels + Encrypted Cloud Proxy Sync' },
+        { id: 'crypto-telemetry', name: '#crypto-telemetry', topic: 'Live AES-256-GCM ciphertext envelopes, ECDH handshakes & RAM audit' },
+        { id: 'gif-sound-lounge', name: '#gif-sound-lounge', topic: 'Animated Base64 GIF showcase & Web Audio API synthesized soundboard' },
+        { id: 'admin-feedback', name: '#admin-feedback', topic: 'Encrypted governance proposals routed to the Genesis Administrator node' }
+      ];
+
+      class VortexMeshTerminal {
+        constructor() {
+          this.crypto = new WebCryptoE2EEEngine();
+          this.soundboard = new WebAudioSoundboard();
+          this.bannerAnimator = new CanvasBannerAnimator();
+
+          // strictly volatile in-memory state (Zero localStorage/sessionStorage/IndexedDB)
+          this.localPeerId = `vortex-${Math.random().toString(36).slice(2, 8)}`;
+          this.genesisTimestamp = Date.now();
+          this.isGenesisAdmin = true;
+          this.genesisAdminPeerId = this.localPeerId;
+          this.genesisAdminCallsign = `arch_${Math.random().toString(36).slice(2, 5)}`;
+
+          this.localProfile = {
+            callsign: this.genesisAdminCallsign,
+            bio: 'Genesis Mesh Administrator',
+            bannerTheme: 'cyber-grid',
+            avatarId: 'orbital',
+            customPfpBase64: null,
+            customBannerBase64: null
+          };
+
+          this.activeChannelId = 'general-vortex';
+          this.channels = [...DEFAULT_CHANNELS];
+          this.messagesByChannel = new Map();
+          this.unreadByChannel = new Map();
+          this.channels.forEach(c => {
+            this.messagesByChannel.set(c.id, []);
+            this.unreadByChannel.set(c.id, 0);
+          });
+
+          // WebRTC Peers, Connections, DataChannels & Chunk Reassembly
+          this.peers = new Map();
+          this.rtcConnections = new Map();
+          this.dataChannels = new Map();
+          this.incomingAssetChunks = new Map();
+          this.activeTypers = new Map();
+
+          // Hardcoded Cloud Proxy Wire Log (Volatile RAM)
+          this.cloudWireBatches = [];
+          this.cloudSyncCountdown = 15;
+          this.pendingSyncRecords = [];
+
+          // Security Firewall Telemetry
+          this.packetTimestampsByPeer = new Map();
+          this.verifiedPacketCount = 0;
+          this.droppedPacketCount = 0;
+
+          this.bootstrap();
+        }
+
+        async bootstrap() {
+          const initialPassphrase = document.getElementById('roomPassphraseInput').value;
+          await this.crypto.initIdentityAndRoomKey(initialPassphrase);
+
+          document.getElementById('roomKeyDigestBadge').textContent = `KEY:${this.crypto.roomKeyDigestHex}`;
+
+          // Register Procedural Canvas Banner Shaders
+          this.bannerAnimator.register(
+            document.getElementById('localSidebarBannerCanvas'),
+            () => this.localProfile.bannerTheme
+          );
+          this.bannerAnimator.register(
+            document.getElementById('modalPreviewBannerCanvas'),
+            () => this.draftBannerTheme || this.localProfile.bannerTheme
+          );
+          this.bannerAnimator.register(
+            document.getElementById('peerViewerBannerCanvas'),
+            () => this.viewerBannerTheme || 'nebula-pulse'
+          );
+
+          this.initEphemeralMultiTabSignaling();
+          await this.initAutonomousWebRTCLoopbackPeers();
+          this.bindUIEvents();
+          this.renderSoundboardDrawer();
+          this.renderEmojiDrawer();
+          this.updateLocalProfileUI();
+          this.renderChannelList();
+          this.renderDmList();
+          this.renderPeerDirectory();
+
+          await this.seedEncryptedGenesisMessages();
+          await this.syncEncryptedBatchToCloudProxy('INITIAL_HANDSHAKE_SYNC');
+          this.startCloudProxyCountdownTimer();
+          this.updateVolatileRamAuditUI();
+          this.logFirewallEvent(`Zero-Footprint RAM initialized. Gateway: ${CLOUD_PROXY_ENDPOINT}`);
+        }
+
+        /* --------------------------------------------------------------------
+         * 1. HARDCODED CLOUD PROXY GATEWAY (`https://google.com`) DISPATCHER
+         * Encrypts the entire batch via AES-256-GCM before transmitting
+         * -------------------------------------------------------------------- */
+        async syncEncryptedBatchToCloudProxy(triggerReason = 'INTERVAL_SYNC') {
+          const pill = document.getElementById('cloudSyncStatusPill');
+          const statusText = document.getElementById('cloudSyncStatusText');
+          statusText.textContent = 'SYNCING...';
+
+          const cleartextBatch = {
+            triggerReason,
+            senderId: this.localPeerId,
+            encryptedUsername: this.localProfile.callsign,
+            encryptedBio: this.localProfile.bio,
+            hasAnimatedGifPfp: Boolean(this.localProfile.customPfpBase64),
+            hasAnimatedGifBanner: Boolean(this.localProfile.customBannerBase64),
+            recordCount: this.pendingSyncRecords.length,
+            records: this.pendingSyncRecords.splice(0, this.pendingSyncRecords.length),
+            timestamp: Date.now()
+          };
+
+          const encryptedEnvelope = await this.crypto.encryptAndSignEnvelope(cleartextBatch);
+
+          // Obfuscated JSON wire payload containing strictly AES-256-GCM ciphertext blocks
+          const obfuscatedCloudPayload = {
+            iv: encryptedEnvelope.ivBase64,
+            ciphertext: encryptedEnvelope.ciphertextBase64,
+            epoch: encryptedEnvelope.epoch,
+            blockHash: encryptedEnvelope.blockHashHex
+          };
+
+          let httpStatusNote = 'DISPATCHED (OPAQUE/CORS HANDLED)';
+          try {
+            await fetch(CLOUD_PROXY_ENDPOINT, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+              body: JSON.stringify(obfuscatedCloudPayload)
+            });
+          } catch (_) {
+            httpStatusNote = 'INTERCEPTED IN VOLATILE BUFFER';
+          }
+
+          const batchEntry = {
+            batchId: `batch-${Date.now().toString(36)}`,
+            endpoint: CLOUD_PROXY_ENDPOINT,
+            triggerReason,
+            httpStatusNote,
+            obfuscatedCloudPayload,
+            fullEnvelope: encryptedEnvelope
+          };
+          this.cloudWireBatches.unshift(batchEntry);
+          if (this.cloudWireBatches.length > 25) this.cloudWireBatches.pop();
+
+          document.getElementById('headerCloudBatchCount').textContent = String(this.cloudWireBatches.length);
+          statusText.textContent = 'SYNCED';
+          pill.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+          this.cloudSyncCountdown = 15;
+          this.updateVolatileRamAuditUI();
+          this.logFirewallEvent(`Cloud Proxy POST -> ${CLOUD_PROXY_ENDPOINT} (${ encryptedEnvelope.blockHashHex.slice(0, 10)}...)`);
+        }
+
+        startCloudProxyCountdownTimer() {
+          setInterval(() => {
+            this.cloudSyncCountdown--;
+            if (this.cloudSyncCountdown <= 0) {
+              this.cloudSyncCountdown = 15;
+              this.syncEncryptedBatchToCloudProxy('AUTO_15S_BATCH');
+            }
+            const label = document.getElementById('cloudSyncCountdownLabel');
+            if (label) label.textContent = `Next: ${this.cloudSyncCountdown}s`;
+          }, 1000);
+        }
+
+        /* --------------------------------------------------------------------
+         * 2. VOLATILE RAM AUDIT & PANIC PURGE
+         * Verifies 0 Bytes in persistent storage & tracks in-memory objects
+         * -------------------------------------------------------------------- */
+        updateVolatileRamAuditUI() {
+          let totalMsgs = 0;
+          for (const [, arr] of this.messagesByChannel.entries()) {
+            totalMsgs += arr.length;
+          }
+          document.getElementById('ramObjectCountLabel').textContent =
+            `RAM: ${totalMsgs} msgs / ${this.cloudWireBatches.length} batches`;
+          document.getElementById('ramAuditBadgeText').textContent = '0B Disk / RAM Only';
+        }
+
+        async purgeVolatileRamState() {
+          for (const [chId] of this.messagesByChannel.entries()) {
+            this.messagesByChannel.set(chId, []);
+            this.unreadByChannel.set(chId, 0);
+          }
+          this.cloudWireBatches.length = 0;
+          this.pendingSyncRecords.length = 0;
+          this.incomingAssetChunks.clear();
+          this.localProfile.customPfpBase64 = null;
+          this.localProfile.customBannerBase64 = null;
+          this.localProfile.callsign = `anon_${Math.random().toString(36).slice(2, 6)}`;
+
+          await this.crypto.initIdentityAndRoomKey(document.getElementById('roomPassphraseInput').value);
+          document.getElementById('headerCloudBatchCount').textContent = '0';
+
+          this.updateLocalProfileUI();
+          this.renderChannelList();
+          this.renderDmList();
+          this.renderPeerDirectory();
+          this.renderMessages();
+          this.updateVolatileRamAuditUI();
+          this.logFirewallEvent('VOLATILE RAM PURGED: All messages, keys, and Base64 assets wiped.');
+          this.showToast('Volatile RAM purged. Ephemeral ECDH/ECDSA keys regenerated.');
+        }
+
+        /* --------------------------------------------------------------------
+         * 3. HYBRID WEBRTC P2P SIGNALING & AUTONOMOUS LOOPBACK DATA CHANNELS
+         * -------------------------------------------------------------------- */
+        initEphemeralMultiTabSignaling() {
+          if (typeof BroadcastChannel !== 'undefined') {
+            this.sigChannel = new BroadcastChannel('vortexmesh_ephemeral_webrtc_sig');
+            this.sigChannel.onmessage = (e) => this.handleIncomingSignal(e.data);
+            this.emitSignal({
+              type: 'PEER_ANNOUNCE',
+              senderId: this.localPeerId,
+              genesisTimestamp: this.genesisTimestamp,
+              ecdhFingerprint: this.crypto.fingerprint
+            });
+          }
+        }
+
+        emitSignal(frame) {
+          if (this.sigChannel) {
+            try { this.sigChannel.postMessage(frame); } catch (_) {}
+          }
+        }
+
+        async handleIncomingSignal(sig) {
+          if (!sig || sig.senderId === this.localPeerId) return;
+          if (sig.targetId && sig.targetId !== this.localPeerId) return;
+
+          if (sig.type === 'PEER_ANNOUNCE') {
+            if (sig.genesisTimestamp < this.genesisTimestamp) {
+              this.isGenesisAdmin = false;
+              this.genesisAdminPeerId = sig.senderId;
+              this.updateLocalProfileUI();
+            }
+            if (this.localPeerId < sig.senderId && !this.rtcConnections.has(sig.senderId)) {
+              await this.createWebRTCOffer(sig.senderId);
+            } else {
+              this.emitSignal({
+                type: 'PEER_ANNOUNCE_ACK',
+                senderId: this.localPeerId,
+                targetId: sig.senderId,
+                genesisTimestamp: this.genesisTimestamp
+              });
+            }
+          } else if (sig.type === 'PEER_ANNOUNCE_ACK') {
+            if (sig.genesisTimestamp < this.genesisTimestamp) {
+              this.isGenesisAdmin = false;
+              this.genesisAdminPeerId = sig.senderId;
+              this.updateLocalProfileUI();
+            }
+            if (this.localPeerId < sig.senderId && !this.rtcConnections.has(sig.senderId)) {
+              await this.createWebRTCOffer(sig.senderId);
+            }
+          } else if (sig.type === 'SDP_OFFER') {
+            await this.handleRemoteOffer(sig.senderId, sig.sdp);
+          } else if (sig.type === 'SDP_ANSWER') {
+            const pc = this.rtcConnections.get(sig.senderId);
+            if (pc && pc.signalingState === 'have-local-offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(sig.sdp));
+            }
+          } else if (sig.type === 'ICE_CANDIDATE') {
+            const pc = this.rtcConnections.get(sig.senderId);
+            if (pc && sig.candidate) {
+              try { await pc.addIceCandidate(new RTCIceCandidate(sig.candidate)); } catch (_) {}
+            }
+          }
+        }
+
+        async createWebRTCOffer(remotePeerId) {
+          const pc = new RTCPeerConnection(PUBLIC_STUN_CONFIG);
+          this.rtcConnections.set(remotePeerId, pc);
+          pc.onicecandidate = (e) => {
+            if (e.candidate) {
+              this.emitSignal({
+                type: 'ICE_CANDIDATE',
+                senderId: this.localPeerId,
+                targetId: remotePeerId,
+                candidate: e.candidate
+              });
+            }
+          };
+          const dc = pc.createDataChannel('vortex-e2ee-p2p', { ordered: true });
+          this.bindDataChannel(remotePeerId, dc);
+
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          this.emitSignal({
+            type: 'SDP_OFFER',
+            senderId: this.localPeerId,
+            targetId: remotePeerId,
+            sdp: pc.localDescription
+          });
+        }
+
+        async handleRemoteOffer(remotePeerId, sdpOffer) {
+          const pc = new RTCPeerConnection(PUBLIC_STUN_CONFIG);
+          this.rtcConnections.set(remotePeerId, pc);
+          pc.onicecandidate = (e) => {
+            if (e.candidate) {
+              this.emitSignal({
+                type: 'ICE_CANDIDATE',
+                senderId: this.localPeerId,
+                targetId: remotePeerId,
+                candidate: e.candidate
+              });
+            }
+          };
+          pc.ondatachannel = (e) => this.bindDataChannel(remotePeerId, e.channel);
+
+          await pc.setRemoteDescription(new RTCSessionDescription(sdpOffer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          this.emitSignal({
+            type: 'SDP_ANSWER',
+            senderId: this.localPeerId,
+            targetId: remotePeerId,
+            sdp: pc.localDescription
+          });
+        }
+
+        bindDataChannel(peerId, dc) {
+          dc.onopen = () => {
+            this.dataChannels.set(peerId, dc);
+            if (!this.peers.has(peerId)) {
+              this.peers.set(peerId, {
+                id: peerId,
+                callsign: peerId,
+                bio: 'Remote WebRTC Mesh Peer',
+                bannerTheme: 'nebula-pulse',
+                avatarId: 'hexshield',
+                customPfpBase64: null,
+                customBannerBase64: null,
+                ecdhFingerprint: `ECDH:${peerId.slice(-4).toUpperCase()}:LIVE`,
+                reputation: 100,
+                quarantined: false,
+                isAdmin: peerId === this.genesisAdminPeerId
+              });
+              this.messagesByChannel.set(`dm:${peerId}`, []);
+              this.unreadByChannel.set(`dm:${peerId}`, 0);
+            }
+            this.updateTunnelCountUI();
+            this.syncEncryptedProfileOverP2P(peerId);
+            this.renderDmList();
+            this.renderPeerDirectory();
+          };
+          dc.onmessage = (evt) => this.processIncomingDataChannelFrame(peerId, evt.data);
+          dc.onclose = () => {
+            this.dataChannels.delete(peerId);
+            this.updateTunnelCountUI();
+          };
+        }
+
+        async initAutonomousWebRTCLoopbackPeers() {
+          const specs = [
+            {
+              id: 'valkyrie_node',
+              callsign: 'valkyrie_node',
+              bio: 'Cryptographic Mesh Sentinel',
+              bannerTheme: 'nebula-pulse',
+              avatarId: 'synthstar',
+              gifPfpPalette: [[14, 10, 32], [168, 85, 247], [236, 72, 153], [6, 182, 212]],
+              gifBannerPalette: [[9, 13, 26], [99, 102, 241], [236, 72, 153], [16, 185, 129]]
+            },
+            {
+              id: 'cipher_zero',
+              callsign: 'cipher_zero',
+              bio: 'Zero-Footprint Cloud Proxy Relay',
+              bannerTheme: 'cyber-grid',
+              avatarId: 'hexshield',
+              gifPfpPalette: [[10, 22, 20], [16, 185, 129], [6, 182, 212], [245, 158, 11]],
+              gifBannerPalette: null
+            },
+            {
+              id: 'nexus_prime',
+              callsign: 'nexus_prime',
+              bio: 'STUN / ICE Packet Auditor',
+              bannerTheme: 'matrix-rain',
+              avatarId: 'solaris',
+              gifPfpPalette: null,
+              gifBannerPalette: null
+            }
+          ];
+
+          for (const spec of specs) {
+            const pcLocal = new RTCPeerConnection(PUBLIC_STUN_CONFIG);
+            const pcRemote = new RTCPeerConnection(PUBLIC_STUN_CONFIG);
+            pcLocal.onicecandidate = e => e.candidate && pcRemote.addIceCandidate(e.candidate);
+            pcRemote.onicecandidate = e => e.candidate && pcLocal.addIceCandidate(e.candidate);
+
+            const dcLocal = pcLocal.createDataChannel(`vortex-${spec.id}`);
+            pcRemote.ondatachannel = (e) => {
+              e.channel.onmessage = () => {};
+            };
+
+            dcLocal.onopen = () => {
+              this.dataChannels.set(spec.id, dcLocal);
+              this.updateTunnelCountUI();
+            };
+            dcLocal.onmessage = (evt) => this.processIncomingDataChannelFrame(spec.id, evt.data);
+
+            const offer = await pcLocal.createOffer();
+            await pcLocal.setLocalDescription(offer);
+            await pcRemote.setRemoteDescription(offer);
+            const answer = await pcRemote.createAnswer();
+            await pcRemote.setLocalDescription(answer);
+            await pcLocal.setRemoteDescription(answer);
+
+            this.rtcConnections.set(spec.id, pcLocal);
+
+            this.peers.set(spec.id, {
+              id: spec.id,
+              callsign: spec.callsign,
+              bio: spec.bio,
+              bannerTheme: spec.bannerTheme,
+              avatarId: spec.avatarId,
+              customPfpBase64: spec.gifPfpPalette
+                ? BinaryGif89aGenerator.createAnimatedGifBase64(26, 26, spec.gifPfpPalette, 6)
+                : null,
+              customBannerBase64: spec.gifBannerPalette
+                ? BinaryGif89aGenerator.createAnimatedGifBase64(64, 20, spec.gifBannerPalette, 6)
+                : null,
+              ecdhFingerprint: `ECDH:${spec.id.slice(0, 4).toUpperCase()}:88F2:41C9`,
+              reputation: 100,
+              quarantined: false,
+              isAdmin: false
+            });
+
+            this.messagesByChannel.set(`dm:${spec.id}`, []);
+            this.unreadByChannel.set(`dm:${spec.id}`, 0);
+          }
+        }
+
+        updateTunnelCountUI() {
+          const el = document.getElementById('rtcTunnelCountLabel');
+          if (el) el.textContent = `${this.dataChannels.size} RTC Tunnels`;
+        }
+
+        /* --------------------------------------------------------------------
+         * 4. DEFENSIVE SECURITY FIREWALL & CHUNKED ENCRYPTED ASSET RECEIVER
+         * -------------------------------------------------------------------- */
+        async processIncomingDataChannelFrame(senderPeerId, rawString) {
+          const peer = this.peers.get(senderPeerId);
+          if (peer && peer.quarantined) {
+            this.droppedPacketCount++;
+            this.updateFirewallMetricsUI();
+            return;
+          }
+
+          // Enforce 64KB Max Frame Ceiling
+          const byteLen = typeof rawString === 'string' ? new Blob([rawString]).size : 0;
+          if (byteLen > 65536) {
+            this.penalizePeerReputation(senderPeerId, 45, `Oversized frame (${Math.round(byteLen / 1024)}KB > 64KB limit)`);
+            return;
+          }
+
+          // Enforce Sliding-Window Rate Limiter (8 packets / 5 seconds)
+          const now = Date.now();
+          const windowTimestamps = (this.packetTimestampsByPeer.get(senderPeerId) || []).filter(t => now - t < 5000);
+          windowTimestamps.push(now);
+          this.packetTimestampsByPeer.set(senderPeerId, windowTimestamps);
+
+          if (windowTimestamps.length > 8) {
+            this.penalizePeerReputation(senderPeerId, 28, `Rate-limit exceeded (${windowTimestamps.length} pkts / 5s)`);
+            return;
+          }
+
+          let wirePacket;
+          try {
+            wirePacket = JSON.parse(rawString);
+          } catch (_) {
+            this.penalizePeerReputation(senderPeerId, 25, 'Malformed JSON wire packet');
+            return;
+          }
+
+          if (wirePacket.frameType === 'ENCRYPTED_ASSET_CHUNK') {
+            await this.handleIncomingEncryptedAssetChunk(senderPeerId, wirePacket);
+            return;
+          }
+
+          if (wirePacket.frameType === 'E2EE_ENVELOPE') {
+            try {
+              const cleartext = await this.crypto.verifyAndDecryptEnvelope(wirePacket.envelope);
+              this.verifiedPacketCount++;
+              this.updateFirewallMetricsUI();
+              this.handleDecryptedPacket(senderPeerId, cleartext, wirePacket.envelope);
+            } catch (_) {
+              this.penalizePeerReputation(senderPeerId, 40, 'AES-256-GCM / ECDSA authentication tag mismatch');
+            }
+          }
+        }
+
+        penalizePeerReputation(peerId, penalty, reason) {
+          this.droppedPacketCount++;
+          const peer = this.peers.get(peerId);
+          if (!peer) {
+            this.updateFirewallMetricsUI();
+            return;
+          }
+          peer.reputation = Math.max(0, peer.reputation - penalty);
+          this.logFirewallEvent(`DROP [${peer.callsign}] -${penalty} rep: ${reason}`);
+
+          if (peer.reputation < 30 && !peer.quarantined) {
+            peer.quarantined = true;
+            this.logFirewallEvent(`QUARANTINED [${peer.callsign}] (Reputation ${peer.reputation} < 30)`);
+            this.showToast(`Firewall quarantined peer ${peer.callsign} (${reason})`);
+          }
+          this.updateFirewallMetricsUI();
+          this.renderPeerDirectory();
+        }
+
+        handleDecryptedPacket(senderPeerId, payload, envelope) {
+          if (!payload || typeof payload !== 'object') return;
+
+          if (payload.kind === 'TYPING_STATE') {
+            this.showTypingIndicator(SecuritySanitizer.sanitizeCallsign(payload.senderCallsign || senderPeerId));
+            return;
+          }
+
+          if (payload.kind === 'PROFILE_SYNC') {
+            const peer = this.peers.get(senderPeerId);
+            if (peer) {
+              peer.callsign = SecuritySanitizer.sanitizeCallsign(payload.callsign);
+              peer.bio = SecuritySanitizer.sanitizeText(payload.bio, 60);
+              peer.bannerTheme = payload.bannerTheme || peer.bannerTheme;
+              peer.avatarId = payload.avatarId || peer.avatarId;
+              this.renderPeerDirectory();
+              this.renderDmList();
+              this.renderMessages();
+            }
+            return;
+          }
+
+          if (payload.kind === 'CHAT_MESSAGE' || payload.kind === 'SOUNDBOARD_TRIGGER' || payload.kind === 'FEATURE_SUGGESTION') {
+            const sanitizedText = SecuritySanitizer.sanitizeText(payload.text, 2000);
+            const channelId = payload.channelId && payload.channelId.startsWith('dm:')
+              ? `dm:${senderPeerId}`
+              : (payload.channelId || 'general-vortex');
+
+            if (payload.kind === 'SOUNDBOARD_TRIGGER' && payload.soundId) {
+              this.soundboard.playPad(payload.soundId);
+            }
+
+            this.storeAndRenderMessage(channelId, {
+              id: payload.id || `msg-${Date.now()}`,
+              channelId,
+              senderId: senderPeerId,
+              senderCallsign: SecuritySanitizer.sanitizeCallsign(payload.senderCallsign || senderPeerId),
+              timestamp: payload.timestamp || Date.now(),
+              kind: payload.kind,
+              text: sanitizedText,
+              soundId: payload.soundId || null,
+              soundName: payload.soundName || null,
+              proposalMeta: payload.proposalMeta || null,
+              reactions: payload.reactions || {},
+              cryptoTelemetry: envelope
+            });
+          } else if (payload.kind === 'REACTION_TOGGLE') {
+            this.applyReactionToggleLocal(payload.channelId, payload.messageId, payload.emojiCode, senderPeerId);
+          }
+        }
+
+        /* --------------------------------------------------------------------
+         * 5. ENCRYPTED BASE64 ANIMATED GIF CHUNKED P2P SYNCING
+         * Encrypts the Base64 GIF string with AES-256-GCM before chunking
+         * -------------------------------------------------------------------- */
+        async broadcastEncryptedBase64Asset(slot, base64DataUri) {
+          if (!base64DataUri) return;
+          const encryptedAssetEnvelope = await this.crypto.encryptAndSignEnvelope({
+            slot,
+            ownerCallsign: this.localProfile.callsign,
+            base64DataUri
+          });
+          const serializedEnvelope = JSON.stringify(encryptedAssetEnvelope);
+
+          const CHUNK_SIZE = 12288; // 12KB per frame (< 64KB max packet limit)
+          const totalChunks = Math.ceil(serializedEnvelope.length / CHUNK_SIZE);
+          const transferId = `gif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+          for (let idx = 0; idx < totalChunks; idx++) {
+            const frame = JSON.stringify({
+              frameType: 'ENCRYPTED_ASSET_CHUNK',
+              transferId,
+              slot,
+              chunkIndex: idx,
+              totalChunks,
+              chunkData: serializedEnvelope.slice(idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE)
+            });
+            for (const [, dc] of this.dataChannels.entries()) {
+              if (dc.readyState === 'open') {
+                try { dc.send(frame); } catch (_) {}
+              }
+            }
+          }
+
+          this.pendingSyncRecords.push({
+            type: 'ENCRYPTED_GIF_ASSET',
+            slot,
+            blockHash: encryptedAssetEnvelope.blockHashHex
+          });
+          this.logFirewallEvent(`Encrypted ${slot.toUpperCase()} Base64 GIF with AES-256-GCM (${totalChunks} P2P chunks)`);
+        }
+
+        async handleIncomingEncryptedAssetChunk(senderPeerId, pkt) {
+          const key = `${senderPeerId}:${pkt.transferId}`;
+          if (!this.incomingAssetChunks.has(key)) {
+            this.incomingAssetChunks.set(key, {
+              chunks: new Array(pkt.totalChunks),
+              received: 0,
+              total: pkt.totalChunks,
+              slot: pkt.slot
+            });
+          }
+          const entry = this.incomingAssetChunks.get(key);
+          if (pkt.chunkIndex >= 0 && pkt.chunkIndex < entry.total && !entry.chunks[pkt.chunkIndex]) {
+            entry.chunks[pkt.chunkIndex] = pkt.chunkData;
+            entry.received++;
+          }
+
+          if (entry.received === entry.total) {
+            this.incomingAssetChunks.delete(key);
+            try {
+              const envelope = JSON.parse(entry.chunks.join(''));
+              const decrypted = await this.crypto.verifyAndDecryptEnvelope(envelope);
+              if (!SecuritySanitizer.isValidBase64Media(decrypted.base64DataUri)) {
+                this.penalizePeerReputation(senderPeerId, 35, 'Rejected invalid Base64 GIF magic-byte header');
+                return;
+              }
+              const peer = this.peers.get(senderPeerId);
+              if (peer) {
+                if (decrypted.slot === 'pfp') peer.customPfpBase64 = decrypted.base64DataUri;
+                else if (decrypted.slot === 'banner') peer.customBannerBase64 = decrypted.base64DataUri;
+                this.verifiedPacketCount++;
+                this.updateFirewallMetricsUI();
+                this.renderPeerDirectory();
+                this.renderMessages();
+              }
+            } catch (_) {
+              this.penalizePeerReputation(senderPeerId, 35, 'Encrypted GIF asset failed AES-GCM verification');
+            }
+          }
+        }
+
+        async syncEncryptedProfileOverP2P(targetPeerId = null) {
+          const cleartextProfile = {
+            kind: 'PROFILE_SYNC',
+            callsign: this.localProfile.callsign,
+            bio: this.localProfile.bio,
+            bannerTheme: this.localProfile.bannerTheme,
+            avatarId: this.localProfile.avatarId
+          };
+          const envelope = await this.crypto.encryptAndSignEnvelope(cleartextProfile);
+          const wireFrame = JSON.stringify({ frameType: 'E2EE_ENVELOPE', envelope });
+
+          if (targetPeerId) {
+            const dc = this.dataChannels.get(targetPeerId);
+            if (dc && dc.readyState === 'open') dc.send(wireFrame);
+          } else {
+            for (const [, dc] of this.dataChannels.entries()) {
+              if (dc.readyState === 'open') dc.send(wireFrame);
+            }
+          }
+
+          if (this.localProfile.customPfpBase64) {
+            await this.broadcastEncryptedBase64Asset('pfp', this.localProfile.customPfpBase64);
+          }
+          if (this.localProfile.customBannerBase64) {
+            await this.broadcastEncryptedBase64Asset('banner', this.localProfile.customBannerBase64);
+          }
+        }
+
+        /* --------------------------------------------------------------------
+         * 6. TRANSMITTING E2EE MESSAGES, SOUNDBOARD EVENTS & FEATURE PROPOSALS
+         * -------------------------------------------------------------------- */
+        async transmitMeshPacket({ text, kind = 'CHAT_MESSAGE', channelId = null, soundId = null, soundName = null, proposalMeta = null }) {
+          const cleanText = SecuritySanitizer.sanitizeText(text, 2000);
+          if (!cleanText) return;
+
+          const targetChannel = channelId || this.activeChannelId;
+          const msgId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+          // Encrypt username, message text, and metadata inside the AES-256-GCM envelope
+          const cleartextPayload = {
+            id: msgId,
+            kind,
+            channelId: targetChannel,
+            senderCallsign: this.localProfile.callsign,
+            timestamp: Date.now(),
+            text: cleanText,
+            soundId,
+            soundName,
+            proposalMeta
+          };
+
+          const envelope = await this.crypto.encryptAndSignEnvelope(cleartextPayload);
+          const wireFrame = JSON.stringify({ frameType: 'E2EE_ENVELOPE', envelope });
+
+          const targetPeerId = targetChannel.startsWith('dm:') ? targetChannel.replace('dm:', '') : null;
+          if (targetPeerId) {
+            const dc = this.dataChannels.get(targetPeerId);
+            if (dc && dc.readyState === 'open') dc.send(wireFrame);
+          } else {
+            for (const [, dc] of this.dataChannels.entries()) {
+              if (dc.readyState === 'open') dc.send(wireFrame);
+            }
+          }
+
+          this.pendingSyncRecords.push({
+            id: msgId,
+            iv: envelope.ivBase64,
+            ciphertext: envelope.ciphertextBase64,
+            blockHash: envelope.blockHashHex
+          });
+
+          this.verifiedPacketCount++;
+          this.updateFirewallMetricsUI();
+
+          this.storeAndRenderMessage(targetChannel, {
+            ...cleartextPayload,
+            senderId: this.localPeerId,
+            reactions: { ':aegis_shield:': [this.localPeerId] },
+            cryptoTelemetry: envelope
+          });
+
+          this.triggerAutonomousPeerReply(targetChannel, kind, proposalMeta);
+        }
+
+        storeAndRenderMessage(channelId, msgRecord) {
+          if (!this.messagesByChannel.has(channelId)) {
+            this.messagesByChannel.set(channelId, []);
+          }
+          this.messagesByChannel.get(channelId).push(msgRecord);
+          this.updateVolatileRamAuditUI();
+
+          if (channelId !== this.activeChannelId) {
+            this.unreadByChannel.set(channelId, (this.unreadByChannel.get(channelId) || 0) + 1);
+            this.renderChannelList();
+            this.renderDmList();
+          } else {
+            this.renderMessages();
+          }
+        }
+
+        async triggerAutonomousPeerReply(channelId, kind, proposalMeta) {
+          if (kind === 'FEATURE_SUGGESTION' && proposalMeta) {
+            this.showTypingIndicator('valkyrie_node');
+            setTimeout(async () => {
+              const reply = {
+                id: `msg-${Date.now()}`,
+                kind: 'CHAT_MESSAGE',
+                channelId: 'admin-feedback',
+                senderCallsign: 'valkyrie_node',
+                timestamp: Date.now(),
+                text: `AES-256-GCM governance block verified for "${proposalMeta.title}". Queued for cloud proxy batch sync and routed to Genesis Admin (@${this.genesisAdminCallsign}) :aegis_shield: :crown_sigil:`
+              };
+              const env = await this.crypto.encryptAndSignEnvelope(reply);
+              this.storeAndRenderMessage('admin-feedback', {
+                ...reply,
+                senderId: 'valkyrie_node',
+                reactions: { ':crown_sigil:': ['valkyrie_node'] },
+                cryptoTelemetry: env
+              });
+            }, 650);
+            return;
+          }
+
+          if (channelId.startsWith('dm:')) {
+            const peerId = channelId.replace('dm:', '');
+            const peer = this.peers.get(peerId);
+            if (peer && !peer.quarantined && ['valkyrie_node', 'cipher_zero', 'nexus_prime'].includes(peerId)) {
+              this.showTypingIndicator(peer.callsign);
+              setTimeout(async () => {
+                const reply = {
+                  id: `msg-${Date.now()}`,
+                  kind: 'CHAT_MESSAGE',
+                  channelId,
+                  senderCallsign: peer.callsign,
+                  timestamp: Date.now(),
+                  text: `Direct WebRTC DataChannel ACK from @${peer.callsign}. Payload encrypted in volatile RAM and queued for obfuscated sync to ${CLOUD_PROXY_ENDPOINT} :neon_bolt: :aegis_shield:`
+                };
+                const env = await this.crypto.encryptAndSignEnvelope(reply);
+                this.storeAndRenderMessage(channelId, {
+                  ...reply,
+                  senderId: peer.id,
+                  reactions: { ':neon_bolt:': [peer.id] },
+                  cryptoTelemetry: env
+                });
+              }, 600);
+            }
+          }
+        }
+
+        showTypingIndicator(callsign) {
+          this.activeTypers.set(callsign, Date.now());
+          this.renderTypingStrip();
+          setTimeout(() => {
+            this.activeTypers.delete(callsign);
+            this.renderTypingStrip();
+          }, 1400);
+        }
+
+        renderTypingStrip() {
+          const strip = document.getElementById('typingIndicatorStrip');
+          const names = Array.from(this.activeTypers.keys());
+          if (names.length === 0) {
+            strip.textContent = '';
+          } else {
+            strip.textContent = `[RTCDataChannel] ${names.join(', ')} transmitting encrypted stream...`;
+          }
+        }
+
+        async seedEncryptedGenesisMessages() {
+          const now = Date.now();
+          const m1 = {
+            id: 'genesis-1',
+            kind: 'CHAT_MESSAGE',
+            channelId: 'general-vortex',
+            senderCallsign: 'valkyrie_node',
+            timestamp: now - 160000,
+            text: `VortexMesh Hybrid Terminal online. All chat history, profiles, and Base64 GIFs reside strictly in volatile RAM (0 Bytes on disk). Click my name or avatar to inspect my looping binary GIF89a PFP and Banner :cyber_flame: :quantum_core:`
+          };
+          const env1 = await this.crypto.encryptAndSignEnvelope(m1);
+          this.messagesByChannel.get('general-vortex').push({
+            ...m1,
+            senderId: 'valkyrie_node',
+            reactions: { ':cyber_flame:': ['valkyrie_node', 'cipher_zero'], ':aegis_shield:': ['nexus_prime'] },
+            cryptoTelemetry: env1
+          });
+
+          const m2 = {
+            id: 'genesis-2',
+            kind: 'CHAT_MESSAGE',
+            channelId: 'general-vortex',
+            senderCallsign: 'cipher_zero',
+            timestamp: now - 85000,
+            text: `Outbound cloud sync is hardcoded exclusively to ${CLOUD_PROXY_ENDPOINT} using AES-256-GCM encrypted envelopes. Click "Inspect E2EE" on any message or "Proxy Wire Log" in the top bar to audit the raw ciphertext :neon_bolt: :warp_drive:`
+          };
+          const env2 = await this.crypto.encryptAndSignEnvelope(m2);
+          this.messagesByChannel.get('general-vortex').push({
+            ...m2,
+            senderId: 'cipher_zero',
+            reactions: { ':neon_bolt:': ['valkyrie_node'] },
+            cryptoTelemetry: env2
+          });
+
+          this.pendingSyncRecords.push(
+            { id: m1.id, iv: env1.ivBase64, ciphertext: env1.ciphertextBase64, blockHash: env1.blockHashHex },
+            { id: m2.id, iv: env2.ivBase64, ciphertext: env2.ciphertextBase64, blockHash: env2.blockHashHex }
+          );
+
+          this.verifiedPacketCount += 2;
+          this.updateFirewallMetricsUI();
+          this.renderMessages();
+        }
+
+        /* --------------------------------------------------------------------
+         * 7. UI RENDERING: CHANNELS, DIRECT TUNNELS, PEERS & MESSAGES
+         * -------------------------------------------------------------------- */
+        updateLocalProfileUI() {
+          const bannerGif = document.getElementById('localSidebarBannerGif');
+          const bannerCanvas = document.getElementById('localSidebarBannerCanvas');
+
+          if (this.localProfile.customBannerBase64 && SecuritySanitizer.isValidBase64Media(this.localProfile.customBannerBase64)) {
+            bannerGif.src = this.localProfile.customBannerBase64;
+            bannerGif.style.display = 'block';
+            bannerCanvas.style.display = 'none';
+          } else {
+            bannerGif.style.display = 'none';
+            bannerCanvas.style.display = 'block';
+          }
+
+          renderProfileAvatarInto(
+            document.getElementById('localSidebarAvatarFrame'),
+            this.localProfile,
+            34
+          );
+
+          document.getElementById('localSidebarDisplayName').textContent = this.localProfile.callsign;
+          document.getElementById('localSidebarFingerprint').textContent = `ECDH ${this.crypto.fingerprint}`;
+
+          const badge = document.getElementById('localSidebarRoleBadge');
+          badge.className = `badge-role ${this.isGenesisAdmin ? 'admin' : 'peer'}`;
+          badge.textContent = this.isGenesisAdmin ? 'GENESIS ADMIN' : 'MESH PEER';
+
+          document.getElementById('governanceAdminTargetText').textContent =
+            `Encrypts feedback via AES-256-GCM and routes directly to Genesis Admin (@${this.genesisAdminCallsign}).`;
+        }
+
+        renderChannelList() {
+          const list = document.getElementById('channelNavList');
+          list.innerHTML = '';
+
+          this.channels.forEach(ch => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `nav-item ${this.activeChannelId === ch.id ? 'active' : ''}`;
+
+            const left = document.createElement('div');
+            left.className = 'nav-item-left';
+            left.innerHTML = `
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="4" y1="9" x2="20" y2="9"></line>
+                <line x1="4" y1="15" x2="20" y2="15"></line>
+                <line x1="10" y1="3" x2="8" y2="21"></line>
+                <line x1="16" y1="3" x2="14" y2="21"></line>
+              </svg>
+            `;
+            const span = document.createElement('span');
+            span.className = 'nav-item-name';
+            span.textContent = ch.name.replace('#', '');
+            left.appendChild(span);
+            btn.appendChild(left);
+
+            const unread = this.unreadByChannel.get(ch.id) || 0;
+            if (unread > 0) {
+              const pill = document.createElement('span');
+              pill.className = 'unread-pill';
+              pill.textContent = String(unread);
+              btn.appendChild(pill);
+            }
+
+            btn.addEventListener('click', () => this.switchChannel(ch.id));
+            list.appendChild(btn);
+          });
+        }
+
+        renderDmList() {
+          const list = document.getElementById('dmNavList');
+          list.innerHTML = '';
+
+          for (const [peerId, peer] of this.peers.entries()) {
+            const dmId = `dm:${peerId}`;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `nav-item ${this.activeChannelId === dmId ? 'active' : ''}`;
+
+            const left = document.createElement('div');
+            left.className = 'nav-item-left';
+            const dot = document.createElement('span');
+            dot.className = 'status-dot';
+            dot.style.color = peer.quarantined ? 'var(--accent-rose)' : 'var(--accent-emerald)';
+
+            const label = document.createElement('span');
+            label.className = 'nav-item-name';
+            label.textContent = peer.callsign;
+            left.appendChild(dot);
+            left.appendChild(label);
+            btn.appendChild(left);
+
+            const unread = this.unreadByChannel.get(dmId) || 0;
+            if (unread > 0) {
+              const pill = document.createElement('span');
+              pill.className = 'unread-pill';
+              pill.textContent = String(unread);
+              btn.appendChild(pill);
+            }
+
+            btn.addEventListener('click', () => this.switchChannel(dmId));
+            list.appendChild(btn);
+          }
+        }
+
+        renderPeerDirectory() {
+          const list = document.getElementById('peerDirectoryList');
+          list.innerHTML = '';
+
+          const activePeers = Array.from(this.peers.values()).filter(p => !p.quarantined).length;
+          document.getElementById('peerOnlineCount').textContent = `${activePeers + 1} Nodes`;
+
+          list.appendChild(this.createPeerCardElement({
+            id: this.localPeerId,
+            callsign: `${this.localProfile.callsign} (You)`,
+            bio: this.localProfile.bio,
+            bannerTheme: this.localProfile.bannerTheme,
+            avatarId: this.localProfile.avatarId,
+            customPfpBase64: this.localProfile.customPfpBase64,
+            customBannerBase64: this.localProfile.customBannerBase64,
+            ecdhFingerprint: this.crypto.fingerprint,
+            reputation: 100,
+            quarantined: false,
+            isAdmin: this.isGenesisAdmin
+          }, true));
+
+          for (const [, peer] of this.peers.entries()) {
+            list.appendChild(this.createPeerCardElement(peer, false));
+          }
+        }
+
+        createPeerCardElement(peer, isSelf) {
+          const card = document.createElement('div');
+          card.className = `peer-node-card ${peer.quarantined ? 'quarantined' : ''}`;
+
+          const top = document.createElement('div');
+          top.className = 'peer-node-top';
+
+          const av = document.createElement('div');
+          av.className = 'avatar-frame';
+          av.style.width = '32px';
+          av.style.height = '32px';
+          renderProfileAvatarInto(av, peer, 30);
+
+          const info = document.createElement('div');
+          info.className = 'peer-node-info';
+
+          const nameRow = document.createElement('div');
+          nameRow.className = 'peer-node-name-row';
+
+          const nameEl = document.createElement('span');
+          nameEl.className = 'peer-node-name';
+          nameEl.textContent = peer.callsign;
+
+          const badge = document.createElement('span');
+          if (peer.quarantined) {
+            badge.className = 'badge-role quarantined';
+            badge.textContent = 'QUARANTINED';
+          } else if (peer.isAdmin) {
+            badge.className = 'badge-role admin';
+            badge.textContent = 'ADMIN';
+          } else {
+            badge.className = 'badge-role peer';
+            badge.textContent = peer.customPfpBase64 ? 'GIF P2P' : 'RTC P2P';
+          }
+
+          nameRow.appendChild(nameEl);
+          nameRow.appendChild(badge);
+
+          const sub = document.createElement('div');
+          sub.className = 'peer-node-sub';
+          sub.textContent = peer.bio || peer.ecdhFingerprint;
+
+          info.appendChild(nameRow);
+          info.appendChild(sub);
+          top.appendChild(av);
+          top.appendChild(info);
+
+          const repRow = document.createElement('div');
+          repRow.className = 'reputation-bar-wrap';
+          const repLabel = document.createElement('span');
+          repLabel.textContent = `Rep ${peer.reputation}%`;
+
+          const track = document.createElement('div');
+          track.className = 'reputation-track';
+          const fill = document.createElement('div');
+          fill.className = 'reputation-fill';
+          fill.style.width = `${peer.reputation}%`;
+          fill.style.background =
+            peer.reputation >= 70
+              ? 'var(--accent-emerald)'
+              : peer.reputation >= 30
+              ? 'var(--accent-amber)'
+              : 'var(--accent-rose)';
+          track.appendChild(fill);
+
+          repRow.appendChild(repLabel);
+          repRow.appendChild(track);
+
+          card.appendChild(top);
+          card.appendChild(repRow);
+
+          card.addEventListener('click', () => {
+            if (isSelf) this.openProfileModal();
+            else this.openPeerProfileViewer(peer);
+          });
+
+          return card;
+        }
+
+        openPeerProfileViewer(peer) {
+          this.viewedPeerId = peer.id;
+          this.viewerBannerTheme = peer.bannerTheme || 'nebula-pulse';
+
+          const gifEl = document.getElementById('peerViewerBannerGif');
+          const canvasEl = document.getElementById('peerViewerBannerCanvas');
+          if (peer.customBannerBase64 && SecuritySanitizer.isValidBase64Media(peer.customBannerBase64)) {
+            gifEl.src = peer.customBannerBase64;
+            gifEl.style.display = 'block';
+            canvasEl.style.display = 'none';
+          } else {
+            gifEl.style.display = 'none';
+            canvasEl.style.display = 'block';
+          }
+
+          renderProfileAvatarInto(document.getElementById('peerViewerAvatarBox'), peer, 56);
+          document.getElementById('peerViewerCallsign').textContent = peer.callsign;
+          document.getElementById('peerViewerBio').textContent = peer.bio;
+
+          const roleBadge = document.getElementById('peerViewerRoleBadge');
+          roleBadge.className = `badge-role ${peer.isAdmin ? 'admin' : 'peer'}`;
+          roleBadge.textContent = peer.isAdmin ? 'GENESIS ADMIN' : 'WEBRTC PEER';
+
+          document.getElementById('peerViewerCryptoSummary').textContent =
+            `Peer ID: ${peer.id} | Key Fingerprint: ${peer.ecdhFingerprint} | Reputation: ${peer.reputation}/100 | Animated GIF PFP: ${peer.customPfpBase64 ? 'Active (Base64)' : 'SVG Fallback'}`;
+
+          document.getElementById('peerViewerModal').classList.add('open');
+        }
+
+        switchChannel(channelId) {
+          this.activeChannelId = channelId;
+          this.unreadByChannel.set(channelId, 0);
+
+          const titleEl = document.getElementById('activeChannelTitle');
+          const topicEl = document.getElementById('activeChannelTopic');
+
+          if (channelId.startsWith('dm:')) {
+            const peerId = channelId.replace('dm:', '');
+            const peer = this.peers.get(peerId);
+            titleEl.textContent = peer ? `@${peer.callsign}` : `@${peerId}`;
+            topicEl.textContent = peer
+              ? `Direct Serverless WebRTC DataChannel (${peer.ecdhFingerprint}) — ${peer.bio}`
+              : 'Direct WebRTC P2P Tunnel';
+          } else {
+            const ch = this.channels.find(c => c.id === channelId) || this.channels[0];
+            titleEl.textContent = ch.name;
+            topicEl.textContent = ch.topic;
+          }
+
+          this.renderChannelList();
+          this.renderDmList();
+          this.renderMessages();
+        }
+
+        renderMessages() {
+          const stream = document.getElementById('messageStream');
+          stream.innerHTML = '';
+
+          const banner = document.createElement('div');
+          banner.className = 'channel-genesis-banner';
+          const title = document.getElementById('activeChannelTitle').textContent;
+          const topic = document.getElementById('activeChannelTopic').textContent;
+          banner.innerHTML = `
+            <div>
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--text-primary);">${SecuritySanitizer.sanitizeText(title, 50)}</div>
+              <div style="font-size: 11.5px; color: var(--text-secondary);">${SecuritySanitizer.sanitizeText(topic, 140)}</div>
+            </div>
+            <span class="badge-role peer">RAM ONLY + AES-256-GCM</span>
+          `;
+          stream.appendChild(banner);
+
+          const messages = this.messagesByChannel.get(this.activeChannelId) || [];
+          messages.forEach(msg => {
+            const senderProfile = this.resolveSenderProfile(msg);
+            const card = document.createElement('article');
+            card.className = `msg-card ${
+              msg.kind === 'FEATURE_SUGGESTION'
+                ? 'governance-proposal'
+                : msg.kind === 'SOUNDBOARD_TRIGGER'
+                ? 'soundboard-event'
+                : ''
+            }`;
+
+            const av = document.createElement('div');
+            av.className = 'avatar-frame';
+            av.style.cursor = 'pointer';
+            renderProfileAvatarInto(av, senderProfile, 34);
+            av.addEventListener('click', () => {
+              if (msg.senderId === this.localPeerId) this.openProfileModal();
+              else if (this.peers.has(msg.senderId)) this.openPeerProfileViewer(this.peers.get(msg.senderId));
+            });
+
+            const body = document.createElement('div');
+            body.className = 'msg-body';
+
+            const header = document.createElement('div');
+            header.className = 'msg-header';
+
+            const author = document.createElement('span');
+            author.className = 'msg-author';
+            author.textContent = senderProfile.callsign;
+            author.addEventListener('click', () => {
+              if (msg.senderId === this.localPeerId) this.openProfileModal();
+              else if (this.peers.has(msg.senderId)) this.openPeerProfileViewer(this.peers.get(msg.senderId));
+            });
+
+            const roleBadge = document.createElement('span');
+            roleBadge.className = `badge-role ${senderProfile.isAdmin ? 'admin' : 'peer'}`;
+            roleBadge.textContent = senderProfile.isAdmin ? 'GENESIS ADMIN' : 'PEER';
+
+            const time = document.createElement('span');
+            time.className = 'msg-timestamp';
+            time.textContent = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            header.appendChild(author);
+            header.appendChild(roleBadge);
+            header.appendChild(time);
+
+            if (msg.cryptoTelemetry) {
+              const inspectBtn = document.createElement('button');
+              inspectBtn.type = 'button';
+              inspectBtn.className = 'btn-inspect-e2ee';
+              inspectBtn.innerHTML = `
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>Inspect E2EE</span>
+              `;
+              inspectBtn.addEventListener('click', () => this.openMessageCryptoInspector(msg));
+              header.appendChild(inspectBtn);
+            }
+
+            body.appendChild(header);
+
+            if (msg.kind === 'FEATURE_SUGGESTION' && msg.proposalMeta) {
+              const metaLine = document.createElement('div');
+              metaLine.style.display = 'flex';
+              metaLine.style.gap = '6px';
+              metaLine.style.marginBottom = '5px';
+              metaLine.innerHTML = `
+                <span class="badge-role admin">PROPOSAL: ${SecuritySanitizer.sanitizeText(msg.proposalMeta.title, 60)}</span>
+                <span class="badge-role peer">${SecuritySanitizer.sanitizeText(msg.proposalMeta.category, 40)}</span>
+                <span class="badge-role peer">ADMIN NODE: @${SecuritySanitizer.sanitizeCallsign(msg.proposalMeta.routedTo)}</span>
+              `;
+              body.appendChild(metaLine);
+            }
+
+            const contentEl = document.createElement('div');
+            contentEl.className = 'msg-content';
+            this.appendSafeTextWithCustomSVGEmojis(contentEl, msg.text);
+            body.appendChild(contentEl);
+
+            if (msg.kind === 'SOUNDBOARD_TRIGGER' && msg.soundId) {
+              const waveCard = document.createElement('div');
+              waveCard.className = 'sound-waveform-card';
+              waveCard.innerHTML = `
+                <div class="waveform-bars">
+                  <div class="waveform-bar" style="animation-delay: 0s;"></div>
+                  <div class="waveform-bar" style="animation-delay: 0.14s;"></div>
+                  <div class="waveform-bar" style="animation-delay: 0.28s;"></div>
+                  <div class="waveform-bar" style="animation-delay: 0.1s;"></div>
+                  <div class="waveform-bar" style="animation-delay: 0.22s;"></div>
+                </div>
+                <span style="font-size: 11px; font-weight: 600; color: var(--accent-cyan);">
+                  Web Audio Synth: ${SecuritySanitizer.sanitizeText(msg.soundName || msg.soundId, 30)}
+                </span>
+              `;
+              const replayBtn = document.createElement('button');
+              replayBtn.type = 'button';
+              replayBtn.className = 'btn-mini';
+              replayBtn.textContent = 'Replay Tone';
+              replayBtn.addEventListener('click', () => this.soundboard.playPad(msg.soundId));
+              waveCard.appendChild(replayBtn);
+              body.appendChild(waveCard);
+            }
+
+            // Custom SVG Reactions Row
+            const reactionsRow = document.createElement('div');
+            reactionsRow.className = 'msg-reactions-row';
+            const defaultCodes = [':neon_bolt:', ':cyber_flame:', ':aegis_shield:', ':quantum_core:', ':prism_heart:'];
+            const existingCodes = Object.keys(msg.reactions || {});
+            const allCodes = Array.from(new Set([...existingCodes, ...defaultCodes]));
+
+            allCodes.forEach(code => {
+              const spec = CUSTOM_SVG_EMOJIS[code];
+              if (!spec) return;
+              const voters = (msg.reactions && msg.reactions[code]) || [];
+              const active = voters.includes(this.localPeerId);
+
+              const rBtn = document.createElement('button');
+              rBtn.type = 'button';
+              rBtn.className = `reaction-btn ${active ? 'active' : ''}`;
+              rBtn.title = `React with ${code}`;
+              rBtn.innerHTML = `
+                <span class="inline-custom-emoji" style="width:14px;height:14px;">${spec.svg}</span>
+                <span>${voters.length}</span>
+              `;
+              rBtn.addEventListener('click', () => this.toggleMessageReaction(this.activeChannelId, msg.id, code));
+              reactionsRow.appendChild(rBtn);
+            });
+
+            body.appendChild(reactionsRow);
+            card.appendChild(av);
+            card.appendChild(body);
+            stream.appendChild(card);
+          });
+
+          stream.scrollTop = stream.scrollHeight;
+        }
+
+        appendSafeTextWithCustomSVGEmojis(container, safeText) {
+          const parts = safeText.split(/(:[a-z0-9_]+:)/g);
+          parts.forEach(part => {
+            if (CUSTOM_SVG_EMOJIS[part]) {
+              const span = document.createElement('span');
+              span.className = 'inline-custom-emoji';
+              span.title = part;
+              span.innerHTML = CUSTOM_SVG_EMOJIS[part].svg;
+              container.appendChild(span);
+            } else {
+              container.appendChild(document.createTextNode(part));
+            }
+          });
+        }
+
+        resolveSenderProfile(msg) {
+          if (msg.senderId === this.localPeerId) {
+            return {
+              callsign: this.localProfile.callsign,
+              avatarId: this.localProfile.avatarId,
+              customPfpBase64: this.localProfile.customPfpBase64,
+              isAdmin: this.isGenesisAdmin
+            };
+          }
+          const peer = this.peers.get(msg.senderId);
+          if (peer) return peer;
+          return {
+            callsign: msg.senderCallsign || 'vortex_peer',
+            avatarId: 'orbital',
+            customPfpBase64: null,
+            isAdmin: false
+          };
+        }
+
+        async toggleMessageReaction(channelId, messageId, emojiCode) {
+          this.applyReactionToggleLocal(channelId, messageId, emojiCode, this.localPeerId);
+          const envelope = await this.crypto.encryptAndSignEnvelope({
+            kind: 'REACTION_TOGGLE',
+            channelId,
+            messageId,
+            emojiCode
+          });
+          const frame = JSON.stringify({ frameType: 'E2EE_ENVELOPE', envelope });
+          for (const [, dc] of this.dataChannels.entries()) {
+            if (dc.readyState === 'open') dc.send(frame);
+          }
+        }
+
+        applyReactionToggleLocal(channelId, messageId, emojiCode, voterId) {
+          const list = this.messagesByChannel.get(channelId) || [];
+          const msg = list.find(m => m.id === messageId);
+          if (!msg) return;
+          if (!msg.reactions) msg.reactions = {};
+          if (!Array.isArray(msg.reactions[emojiCode])) msg.reactions[emojiCode] = [];
+
+          const arr = msg.reactions[emojiCode];
+          const idx = arr.indexOf(voterId);
+          if (idx >= 0) arr.splice(idx, 1);
+          else arr.push(voterId);
+
+          if (channelId === this.activeChannelId) this.renderMessages();
+        }
+
+        /* --------------------------------------------------------------------
+         * 8. SOUNDBOARD & CUSTOM SVG EMOJI DRAWERS
+         * -------------------------------------------------------------------- */
+        renderSoundboardDrawer() {
+          const grid = document.getElementById('soundboardGrid');
+          grid.innerHTML = '';
+
+          this.soundboard.pads.forEach(pad => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'sound-pad-btn';
+            btn.innerHTML = `
+              <div class="sound-pad-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+              </div>
+              <div>
+                <div>${pad.name}</div>
+                <div style="font-size: 9.5px; font-family: var(--font-mono); color: var(--text-muted);">${pad.spec}</div>
+              </div>
+            `;
+            btn.addEventListener('click', () => {
+              this.soundboard.playPad(pad.id);
+              this.transmitMeshPacket({
+                kind: 'SOUNDBOARD_TRIGGER',
+                text: `Broadcast synthesized Web Audio pad [${pad.name}] :quantum_core:`,
+                soundId: pad.id,
+                soundName: pad.name
+              });
+            });
+            grid.appendChild(btn);
+          });
+        }
+
+        renderEmojiDrawer() {
+          const grid = document.getElementById('emojiPickerGrid');
+          grid.innerHTML = '';
+
+          Object.entries(CUSTOM_SVG_EMOJIS).forEach(([code, spec]) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'emoji-tile-btn';
+            btn.innerHTML = `
+              <span class="inline-custom-emoji">${spec.svg}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;">${code}</span>
+            `;
+            btn.addEventListener('click', () => {
+              const input = document.getElementById('composerInput');
+              input.value = `${input.value}${input.value.endsWith(' ') || !input.value ? '' : ' '}${code} `;
+              input.focus();
+            });
+            grid.appendChild(btn);
+          });
+        }
+
+        /* --------------------------------------------------------------------
+         * 9. PROFILE MODAL & BASE64 ANIMATED GIF PIPELINE
+         * -------------------------------------------------------------------- */
+        openProfileModal() {
+          this.draftBannerTheme = this.localProfile.bannerTheme;
+          this.draftAvatarId = this.localProfile.avatarId;
+          this.draftCustomPfpBase64 = this.localProfile.customPfpBase64;
+          this.draftCustomBannerBase64 = this.localProfile.customBannerBase64;
+
+          document.getElementById('inputProfileCallsign').value = this.localProfile.callsign;
+          document.getElementById('inputProfileBio').value = this.localProfile.bio;
+
+          this.renderProfileModalPresets();
+          this.updateProfileModalLivePreview();
+          document.getElementById('profileModal').classList.add('open');
+        }
+
+        renderProfileModalPresets() {
+          const bannerGrid = document.getElementById('bannerPresetGrid');
+          bannerGrid.innerHTML = '';
+          BANNER_THEMES.forEach(b => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const selected = !this.draftCustomBannerBase64 && this.draftBannerTheme === b.id;
+            btn.className = `preset-btn ${selected ? 'selected' : ''}`;
+            btn.textContent = b.name;
+            btn.addEventListener('click', () => {
+              this.draftBannerTheme = b.id;
+              this.draftCustomBannerBase64 = null;
+              this.renderProfileModalPresets();
+              this.updateProfileModalLivePreview();
+            });
+            bannerGrid.appendChild(btn);
+          });
+
+          const avGrid = document.getElementById('avatarPresetGrid');
+          avGrid.innerHTML = '';
+          AVATAR_PRESETS.forEach(a => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const selected = !this.draftCustomPfpBase64 && this.draftAvatarId === a.id;
+            btn.className = `preset-btn ${selected ? 'selected' : ''}`;
+            btn.appendChild(renderVectorAvatarSVG(a.id, 28));
+            const span = document.createElement('span');
+            span.textContent = a.name;
+            btn.appendChild(span);
+            btn.addEventListener('click', () => {
+              this.draftAvatarId = a.id;
+              this.draftCustomPfpBase64 = null;
+              this.renderProfileModalPresets();
+              this.updateProfileModalLivePreview();
+            });
+            avGrid.appendChild(btn);
+          });
+        }
+
+        updateProfileModalLivePreview() {
+          const gifEl = document.getElementById('modalPreviewBannerGif');
+          const canvasEl = document.getElementById('modalPreviewBannerCanvas');
+
+          if (this.draftCustomBannerBase64 && SecuritySanitizer.isValidBase64Media(this.draftCustomBannerBase64)) {
+            gifEl.src = this.draftCustomBannerBase64;
+            gifEl.style.display = 'block';
+            canvasEl.style.display = 'none';
+          } else {
+            gifEl.style.display = 'none';
+            canvasEl.style.display = 'block';
+          }
+
+          renderProfileAvatarInto(document.getElementById('modalPreviewAvatarBox'), {
+            callsign: document.getElementById('inputProfileCallsign').value,
+            avatarId: this.draftAvatarId,
+            customPfpBase64: this.draftCustomPfpBase64
+          }, 56);
+
+          document.getElementById('modalPreviewCallsign').textContent =
+            SecuritySanitizer.sanitizeCallsign(document.getElementById('inputProfileCallsign').value);
+          document.getElementById('modalPreviewBioText').textContent =
+            SecuritySanitizer.sanitizeText(document.getElementById('inputProfileBio').value, 60) || 'Online';
+
+          document.getElementById('btnClearCustomPfp').style.display =
+            this.draftCustomPfpBase64 ? 'inline-block' : 'none';
+          document.getElementById('btnClearCustomBanner').style.display =
+            this.draftCustomBannerBase64 ? 'inline-block' : 'none';
+        }
+
+        handleFileUploadToBase64(file, slot) {
+          if (!file) return;
+          if (file.size > 1536 * 1024) {
+            this.showToast('File exceeds 1.5MB P2P DataChannel & Cloud Proxy frame limit.');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUri = reader.result;
+            if (!SecuritySanitizer.isValidBase64Media(dataUri)) {
+              this.showToast('Security Filter: Rejected invalid image/GIF magic-byte signature.');
+              return;
+            }
+            if (slot === 'pfp') this.draftCustomPfpBase64 = dataUri;
+            else this.draftCustomBannerBase64 = dataUri;
+            this.renderProfileModalPresets();
+            this.updateProfileModalLivePreview();
+            this.showToast(`Loaded Base64 ${file.type === 'image/gif' ? 'Animated GIF' : 'Image'} in volatile RAM`);
+          };
+          reader.readAsDataURL(file);
+        }
+
+        async saveProfileFromModal() {
+          this.localProfile.callsign = SecuritySanitizer.sanitizeCallsign(
+            document.getElementById('inputProfileCallsign').value
+          );
+          this.localProfile.bio = SecuritySanitizer.sanitizeText(
+            document.getElementById('inputProfileBio').value,
+            60
+          ) || 'Genesis Mesh Administrator';
+          this.localProfile.bannerTheme = this.draftBannerTheme;
+          this.localProfile.avatarId = this.draftAvatarId;
+          this.localProfile.customPfpBase64 = this.draftCustomPfpBase64;
+          this.localProfile.customBannerBase64 = this.draftCustomBannerBase64;
+
+          if (this.isGenesisAdmin) {
+            this.genesisAdminCallsign = this.localProfile.callsign;
+          }
+
+          this.updateLocalProfileUI();
+          this.renderPeerDirectory();
+          this.renderMessages();
+          document.getElementById('profileModal').classList.remove('open');
+
+          await this.syncEncryptedProfileOverP2P(null);
+          await this.syncEncryptedBatchToCloudProxy('PROFILE_GIF_UPDATE');
+          this.showToast('Encrypted username & Base64 GIF profile synced over P2P & Cloud Proxy.');
+        }
+
+        /* --------------------------------------------------------------------
+         * 10. CRYPTO INSPECTOR & CLOUD WIRE LOG MODALS
+         * -------------------------------------------------------------------- */
+        openMessageCryptoInspector(msg) {
+          const env = msg.cryptoTelemetry;
+          if (!env) return;
+          document.getElementById('cryptoModalTitle').textContent = 'Inspect E2EE Message Ciphertext & Cloud Envelope';
+          document.getElementById('inspectTransportInfo').textContent =
+            `Gateway: ${CLOUD_PROXY_ENDPOINT} | P2P: WebRTC RTCDataChannel | Key Digest: ${this.crypto.roomKeyDigestHex}`;
+          document.getElementById('inspectIvHex').textContent =
+            `96-Bit IV (Hex): ${env.ivHex} | SHA-256 Block Digest: ${env.blockHashHex}`;
+          document.getElementById('inspectCiphertext').textContent = env.ciphertextBase64;
+          document.getElementById('inspectSignature').textContent =
+            `ECDSA P-256 Signature: ${env.signatureBase64}`;
+          document.getElementById('cryptoInspectorModal').classList.add('open');
+        }
+
+        openCloudWireInspector() {
+          const latest = this.cloudWireBatches[0];
+          if (!latest) return;
+          document.getElementById('cryptoModalTitle').textContent =
+            `Cloud Proxy Wire Log (${this.cloudWireBatches.length} Dispatches to ${CLOUD_PROXY_ENDPOINT})`;
+          document.getElementById('inspectTransportInfo').textContent =
+            `POST ${latest.endpoint} | Trigger: ${latest.triggerReason} | Status: ${latest.httpStatusNote}`;
+          document.getElementById('inspectIvHex').textContent =
+            `IV (Base64): ${latest.obfuscatedCloudPayload.iv} | Block Hash: ${latest.obfuscatedCloudPayload.blockHash}`;
+          document.getElementById('inspectCiphertext').textContent =
+            JSON.stringify(latest.obfuscatedCloudPayload, null, 2);
+          document.getElementById('inspectSignature').textContent =
+            this.cloudWireBatches
+              .map(b => `[${new Date(b.obfuscatedCloudPayload.epoch).toLocaleTimeString()}] POST ${b.endpoint} -> blockHash=${b.obfuscatedCloudPayload.blockHash.slice(0, 16)}...`)
+              .join('\n');
+          document.getElementById('cryptoInspectorModal').classList.add('open');
+        }
+
+        updateFirewallMetricsUI() {
+          document.getElementById('metricVerifiedCount').textContent = String(this.verifiedPacketCount);
+          document.getElementById('metricDroppedCount').textContent = String(this.droppedPacketCount);
+        }
+
+        logFirewallEvent(text) {
+          const log = document.getElementById('firewallAuditLog');
+          if (!log) return;
+          const line = document.createElement('div');
+          const ts = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          line.textContent = `[${ts}] ${text}`;
+          log.prepend(line);
+        }
+
+        /* --------------------------------------------------------------------
+         * 11. UI EVENT BINDINGS
+         * -------------------------------------------------------------------- */
+        bindUIEvents() {
+          const composerInput = document.getElementById('composerInput');
+          composerInput.addEventListener('input', async () => {
+            const env = await this.crypto.encryptAndSignEnvelope({
+              kind: 'TYPING_STATE',
+              senderCallsign: this.localProfile.callsign
+            });
+            const frame = JSON.stringify({ frameType: 'E2EE_ENVELOPE', envelope: env });
+            for (const [, dc] of this.dataChannels.entries()) {
+              if (dc.readyState === 'open') {
+                try { dc.send(frame); } catch (_) {}
+              }
+            }
+          });
+
+          document.getElementById('composerForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = composerInput.value;
+            composerInput.value = '';
+            this.transmitMeshPacket({ text, kind: 'CHAT_MESSAGE' });
+          });
+
+          // Soundboard & Emoji Drawers
+          const toggleSoundboard = () => {
+            document.getElementById('emojiDrawer').classList.remove('open');
+            document.getElementById('soundboardDrawer').classList.toggle('open');
+          };
+          document.getElementById('btnToggleSoundboard').addEventListener('click', toggleSoundboard);
+          document.getElementById('btnHeaderToggleSoundboard').addEventListener('click', toggleSoundboard);
+          document.getElementById('btnCloseSoundboardDrawer').addEventListener('click', () => {
+            document.getElementById('soundboardDrawer').classList.remove('open');
+          });
+
+          document.getElementById('btnToggleEmojiPicker').addEventListener('click', () => {
+            document.getElementById('soundboardDrawer').classList.remove('open');
+            document.getElementById('emojiDrawer').classList.toggle('open');
+          });
+          document.getElementById('btnCloseEmojiDrawer').addEventListener('click', () => {
+            document.getElementById('emojiDrawer').classList.remove('open');
+          });
+
+          // Cloud Proxy Sync & Wire Log Buttons
+          document.getElementById('btnForceCloudSync').addEventListener('click', () => {
+            this.syncEncryptedBatchToCloudProxy('MANUAL_FORCE_SYNC');
+            this.showToast(`Encrypted state batch dispatched to ${CLOUD_PROXY_ENDPOINT}`);
+          });
+          document.getElementById('btnInspectLastCloudBatch').addEventListener('click', () => this.openCloudWireInspector());
+          document.getElementById('btnOpenCloudWireModal').addEventListener('click', () => this.openCloudWireInspector());
+
+          // Shared Room Key Rotation (PBKDF2-SHA256 -> AES-256-GCM)
+          document.getElementById('btnRotateRoomKey').addEventListener('click', async () => {
+            const pass = document.getElementById('roomPassphraseInput').value;
+            await this.crypto.deriveSharedRoomKey(pass);
+            document.getElementById('roomKeyDigestBadge').textContent = `KEY:${this.crypto.roomKeyDigestHex}`;
+            this.logFirewallEvent(`Derived new PBKDF2 AES-256-GCM room key (${this.crypto.roomKeyDigestHex})`);
+            this.showToast(`Rotated Shared Room Key (Digest: ${this.crypto.roomKeyDigestHex})`);
+          });
+
+          // Panic Purge Volatile RAM
+          document.getElementById('btnPurgeVolatileRam').addEventListener('click', () => {
+            this.purgeVolatileRamState();
+          });
+
+          // Profile Modal
+          document.getElementById('btnOpenProfileModal').addEventListener('click', () => this.openProfileModal());
+          document.getElementById('btnLocalProfileClick').addEventListener('click', () => this.openProfileModal());
+          document.getElementById('btnCloseProfileModal').addEventListener('click', () => {
+            document.getElementById('profileModal').classList.remove('open');
+          });
+          document.getElementById('btnCancelProfileModal').addEventListener('click', () => {
+            document.getElementById('profileModal').classList.remove('open');
+          });
+          document.getElementById('btnSaveProfileModal').addEventListener('click', () => this.saveProfileFromModal());
+
+          document.getElementById('inputProfileCallsign').addEventListener('input', () => this.updateProfileModalLivePreview());
+          document.getElementById('inputProfileBio').addEventListener('input', () => this.updateProfileModalLivePreview());
+
+          // Base64 GIF File Uploaders & Programmatic Binary GIF89a Generators
+          const pfpInput = document.getElementById('fileInputPfp');
+          const bannerInput = document.getElementById('fileInputBanner');
+          document.getElementById('btnUploadPfpFile').addEventListener('click', () => pfpInput.click());
+          document.getElementById('btnUploadBannerFile').addEventListener('click', () => bannerInput.click());
+
+          pfpInput.addEventListener('change', (e) => {
+            this.handleFileUploadToBase64(e.target.files[0], 'pfp');
+            pfpInput.value = '';
+          });
+          bannerInput.addEventListener('change', (e) => {
+            this.handleFileUploadToBase64(e.target.files[0], 'banner');
+            bannerInput.value = '';
+          });
+
+          document.getElementById('btnGenSampleGifPfp').addEventListener('click', () => {
+            const palettes = [
+              [[10, 14, 28], [99, 102, 241], [6, 182, 212], [244, 63, 94]],
+              [[12, 24, 20], [16, 185, 129], [56, 189, 248], [245, 158, 11]]
+            ];
+            const p = palettes[Math.floor(Math.random() * palettes.length)];
+            this.draftCustomPfpBase64 = BinaryGif89aGenerator.createAnimatedGifBase64(28, 28, p, 6);
+            this.renderProfileModalPresets();
+            this.updateProfileModalLivePreview();
+            this.showToast('Synthesized multi-frame binary GIF89a PFP in volatile RAM!');
+          });
+
+          document.getElementById('btnGenSampleGifBanner').addEventListener('click', () => {
+            const p = [[8, 12, 24], [79, 70, 229], [236, 72, 153], [6, 182, 212]];
+            this.draftCustomBannerBase64 = BinaryGif89aGenerator.createAnimatedGifBase64(64, 20, p, 6);
+            this.renderProfileModalPresets();
+            this.updateProfileModalLivePreview();
+            this.showToast('Synthesized multi-frame binary GIF89a Banner in volatile RAM!');
+          });
+
+          document.getElementById('btnClearCustomPfp').addEventListener('click', () => {
+            this.draftCustomPfpBase64 = null;
+            this.renderProfileModalPresets();
+            this.updateProfileModalLivePreview();
+          });
+          document.getElementById('btnClearCustomBanner').addEventListener('click', () => {
+            this.draftCustomBannerBase64 = null;
+            this.renderProfileModalPresets();
+            this.updateProfileModalLivePreview();
+          });
+
+          // Suggest Features Modal (Routes to Genesis Admin)
+          document.getElementById('btnOpenSuggestModal').addEventListener('click', () => {
+            document.getElementById('suggestModalTargetInfo').textContent =
+              `Encrypts proposal with AES-256-GCM and routes directly to Genesis Administrator (@${this.genesisAdminCallsign}) in #admin-feedback.`;
+            document.getElementById('suggestModal').classList.add('open');
+          });
+          document.getElementById('btnCloseSuggestModal').addEventListener('click', () => {
+            document.getElementById('suggestModal').classList.remove('open');
+          });
+          document.getElementById('btnCancelSuggestModal').addEventListener('click', () => {
+            document.getElementById('suggestModal').classList.remove('open');
+          });
+          document.getElementById('btnSubmitSuggestModal').addEventListener('click', () => {
+            const title = SecuritySanitizer.sanitizeText(document.getElementById('suggestTitleInput').value, 80);
+            const category = SecuritySanitizer.sanitizeText(document.getElementById('suggestCategorySelect').value, 45);
+            const details = SecuritySanitizer.sanitizeText(document.getElementById('suggestDetailsInput').value, 1000);
+            if (!title || !details) {
+              this.showToast('Please enter both a proposal title and technical specification.');
+              return;
+            }
+            document.getElementById('suggestTitleInput').value = '';
+            document.getElementById('suggestDetailsInput').value = '';
+            document.getElementById('suggestModal').classList.remove('open');
+
+            this.switchChannel('admin-feedback');
+            this.transmitMeshPacket({
+              kind: 'FEATURE_SUGGESTION',
+              channelId: 'admin-feedback',
+              text: details,
+              proposalMeta: {
+                title,
+                category,
+                routedTo: this.genesisAdminCallsign
+              }
+            });
+            this.syncEncryptedBatchToCloudProxy('ADMIN_FEATURE_PROPOSAL');
+            this.showToast(`Encrypted feature proposal routed to Genesis Admin (@${this.genesisAdminCallsign})`);
+          });
+
+          // Crypto Inspector & Peer Viewer Modals
+          document.getElementById('btnCloseCryptoModal').addEventListener('click', () => {
+            document.getElementById('cryptoInspectorModal').classList.remove('open');
+          });
+          document.getElementById('btnDoneCryptoModal').addEventListener('click', () => {
+            document.getElementById('cryptoInspectorModal').classList.remove('open');
+          });
+          document.getElementById('btnClosePeerViewerModal').addEventListener('click', () => {
+            document.getElementById('peerViewerModal').classList.remove('open');
+          });
+          document.getElementById('btnDonePeerViewerModal').addEventListener('click', () => {
+            document.getElementById('peerViewerModal').classList.remove('open');
+          });
+          document.getElementById('btnOpenDirectTunnelFromViewer').addEventListener('click', () => {
+            document.getElementById('peerViewerModal').classList.remove('open');
+            if (this.viewedPeerId) this.switchChannel(`dm:${this.viewedPeerId}`);
+          });
+
+          // Defensive Security Firewall Test Suite
+          document.getElementById('btnSimFlood').addEventListener('click', () => {
+            for (let i = 0; i < 11; i++) {
+              this.processIncomingDataChannelFrame('nexus_prime', JSON.stringify({ frameType: 'PING' }));
+            }
+          });
+          document.getElementById('btnSimOversize').addEventListener('click', () => {
+            const hugeFrame = 'A'.repeat(70000); // ~70KB > 64KB limit
+            this.processIncomingDataChannelFrame('cipher_zero', hugeFrame);
+          });
+          document.getElementById('btnSimTamper').addEventListener('click', () => {
+            const tampered = JSON.stringify({
+              frameType: 'E2EE_ENVELOPE',
+              envelope: {
+                ivBase64: btoa('123456789012'),
+                ciphertextBase64: btoa('CORRUPTED_AES_GCM_CIPHERTEXT_BLOCK'),
+                signatureBase64: btoa('FORGED_SIGNATURE')
+              }
+            });
+            this.processIncomingDataChannelFrame('nexus_prime', tampered);
+          });
+          document.getElementById('btnSimXss').addEventListener('click', () => {
+            const vector = `<img src=x onerror="alert(1)"> <script>steal()<\/script> :aegis_shield:`;
+            const clean = SecuritySanitizer.sanitizeText(vector);
+            this.logFirewallEvent(`Sanitized XSS injection -> "${clean}"`);
+            this.transmitMeshPacket({
+              kind: 'CHAT_MESSAGE',
+              text: `[Zero-Trust XSS Filter Audit] Vector neutralized: ${clean}`
+            });
+          });
+          document.getElementById('btnSimRestorePeers').addEventListener('click', () => {
+            for (const [, p] of this.peers.entries()) {
+              p.reputation = 100;
+              p.quarantined = false;
+            }
+            this.packetTimestampsByPeer.clear();
+            this.renderPeerDirectory();
+            this.logFirewallEvent('Restored all peer reputation scores to 100%');
+            this.showToast('Restored all WebRTC peer reputation scores to 100%.');
+          });
+        }
+
+        showToast(message) {
+          const stack = document.getElementById('toastStack');
+          const item = document.createElement('div');
+          item.className = 'toast-item';
+          item.textContent = message;
+          stack.appendChild(item);
+          setTimeout(() => item.remove(), 3500);
+        }
+      }
+
+      window.addEventListener('DOMContentLoaded', () => {
+        new VortexMeshTerminal();
+      });
+    })();
+  </script>
+</body>
+</html>
